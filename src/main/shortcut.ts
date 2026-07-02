@@ -1,5 +1,4 @@
 import {
-  Accelerator,
   BrowserWindow,
   globalShortcut,
   Menu,
@@ -12,6 +11,7 @@ import bus from "../common/event-bus";
 
 import {
   Shortcuts,
+  Accelerator,
   loadLocalShortcuts,
   loadGlobalShortcuts,
 } from "../common/shortcuts";

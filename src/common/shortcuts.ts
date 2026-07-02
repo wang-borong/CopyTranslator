@@ -1,4 +1,4 @@
-import { Accelerator } from "electron";
+export type Accelerator = string;
 import { env } from "./env";
 import { mapToObj, objToMap } from "./types";
 import fs from "fs";

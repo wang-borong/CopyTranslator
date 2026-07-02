@@ -29,7 +29,7 @@ module.exports = {
     "@opentranslate2/tencent",
     "@opentranslate2/tencent-smart",
     "@opentranslate2/volc",
-    "@opentranslate2/yandex"
+    "@opentranslate2/yandex",
   ],
   pluginOptions: {
     electronBuilder: {
@@ -49,21 +49,23 @@ module.exports = {
         config.module
           .rule("compile-opentranslate")
           .test(/\.js$/)
-          .include
-            .add(/node_modules[\\/]@opentranslate/)
-            .add(/node_modules[\\/]@opentranslate2/)
-            .add(/OpenTranslate[\\/]packages/)
-            .end()
+          .include.add(/node_modules[\\/]@opentranslate/)
+          .add(/node_modules[\\/]@opentranslate2/)
+          .add(/OpenTranslate[\\/]packages/)
+          .end()
           .use("babel-loader")
-            .loader("babel-loader")
-            .options({
-              presets: [
-                [require.resolve("@vue/cli-plugin-babel/preset"), { targets: { node: "current" } }]
+          .loader("babel-loader")
+          .options({
+            presets: [
+              [
+                require.resolve("@vue/cli-plugin-babel/preset"),
+                { targets: { node: "current" } },
               ],
-              plugins: [
-                require.resolve("@babel/plugin-proposal-class-properties")
-              ]
-            });
+            ],
+            plugins: [
+              require.resolve("@babel/plugin-proposal-class-properties"),
+            ],
+          });
         // config.when(process.env.NODE_ENV === "production", (config) => {
         //   config.plugin("analysis").use(new BundleAnalyzerPlugin());
         // });
@@ -114,11 +116,7 @@ module.exports = {
               arch: ["x64"],
             },
             {
-              target: "deb",
-              arch: ["x64"],
-            },
-            {
-              target: "rpm",
+              target: "tar.gz",
               arch: ["x64"],
             },
           ],
@@ -153,7 +151,7 @@ module.exports = {
           license: "readable_license.txt",
         },
       },
-      externals: ["iohook", "shortcut-capture", "active-win","@nut-tree/nut-js"],
+      externals: ["active-win", "@nut-tree/nut-js", "@electron/remote"],
       // 这一步还蛮重要的，不然就会报错
       nodeModulesPath: ["./node_modules"],
     },

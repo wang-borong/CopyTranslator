@@ -45,7 +45,9 @@ class Controller extends MainController {
     super();
     this.config.load();
     // Lazy load to avoid circular dependencies
-    const { customTranslatorManager } = require("@/common/translate/custom-translators");
+    const {
+      customTranslatorManager,
+    } = require("@/common/translate/custom-translators");
     customTranslatorManager.reload();
     observers.push(this);
     observers.push(this.transCon);

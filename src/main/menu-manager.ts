@@ -98,7 +98,7 @@ export class MenuManager {
     contain.forEach((id) => {
       const action = this.act.getAction(id);
       const menuItem = this.actionToMenuItem(action);
-      menu.append(new MenuItem(menuItem));
+      menu.append(new MenuItem(menuItem as any));
     });
     return menu;
   }

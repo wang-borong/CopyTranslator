@@ -3,15 +3,14 @@
   "version": "12.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
+    "serve": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service serve",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service build",
     "test:unit": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint",
-    "electron:build": "npm run prebuild && vue-cli-service electron:build && npm run postbuild",
-    "electron:serve": "npm run prebuild && vue-cli-service electron:serve",
+    "electron:build": "npm run prebuild && NODE_OPTIONS=--openssl-legacy-provider vue-cli-service electron:build --legacy && npm run postbuild",
+    "electron:serve": "npm run prebuild && NODE_OPTIONS=--openssl-legacy-provider vue-cli-service electron:serve --legacy",
     "postinstall": "electron-builder install-app-deps",
-    "rebuild": "npm rebuild --runtime=electron --target=8.2.3 --disturl=https://electronjs.org/headers --abi=76",
-    "rebuild_32": "npm rebuild --runtime=electron --target=8.2.3 --disturl=https://electronjs.org/headers --abi=76 --arch=ia32",
+    "rebuild": "electron-builder install-app-deps",
     "prebuild": "tsc ./src/prebuild.ts --downlevelIteration --esModuleInterop && node ./src/prebuild.js && npm run clean",
     "postbuild": "node postbuild.js",
     "clean": "node clean.js",
@@ -23,7 +22,7 @@
   },
   "main": "background.js",
   "dependencies": {
-    "@adeperio/forcefocus": "^1.0.3",
+    "@electron/remote": "^2.1.3",
     "@gotoeasy/bus": "^1.0.0",
     "@mdi/font": "^7.0.96",
     "@nut-tree/nut-js": "^2.3.0",
@@ -56,21 +55,18 @@
     "electron-log": "^4.2.4",
     "electron-updater": "4.2.5",
     "font-list": "^1.4.5",
-    "iohook": "0.9.0",
     "lodash.compact": "^3.0.1",
     "lodash.flatten": "^4.4.0",
     "lodash.sum": "^4.0.2",
     "lodash.trim": "^4.5.1",
     "lodash.trimend": "^4.5.1",
     "lodash.trimstart": "^4.5.1",
-    "node-mouse": "^0.0.2",
     "proxy-agent": "^4.0.0",
     "sbd": "^1.0.18",
-    "shortcut-capture": "^1.2.3",
     "socks-proxy-agent": "^5.0.0",
     "sudo-prompt-alt": "^9.3.0",
     "v8-compile-cache": "^2.1.0",
-    "vue": "^2.6.11",
+    "vue": "^2.7.16",
     "vue-class-component": "^7.2.3",
     "vue-property-decorator": "^8.4.1",
     "vue-router": "^3.1.6",
@@ -78,15 +74,24 @@
     "vuedraggable": "^2.24.3",
     "vuetify": "v2.6.12",
     "vuex": "^3.2.0",
-    "vuex-electron": "https://github.com/MaverickMartyn/vuex-electron.git"
+    "vuex-electron": "^1.0.3",
+    "winston": "^3.2.1",
+    "winston-daily-rotate-file": "^4.4.2"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-class-properties": "^7.18.6",
-    "@types/jest": "^24.0.11",
+    "@types/cheerio": "^0.22.18",
+    "@types/crypto-js": "^3.1.43",
+    "@types/jest": "^24.0.19",
     "@types/lodash.compact": "^3.0.6",
+    "@types/lodash.debounce": "^4.0.6",
+    "@types/lodash.escaperegexp": "^4.1.6",
     "@types/lodash.flatten": "^4.4.6",
+    "@types/lodash.merge": "^4.6.6",
     "@types/lodash.sum": "^4.0.6",
     "@types/lodash.trimend": "^4.5.6",
+    "@types/mousetrap": "^1.6.3",
+    "@types/node": "^12.0.0",
+    "@types/request": "^2.48.5",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "@vue/cli-plugin-babel": "^4.3.1",
@@ -100,35 +105,21 @@
     "@vue/eslint-config-typescript": "^7.0.0",
     "@vue/test-utils": "1.0.0-beta.29",
     "core-js": "3.6.5",
-    "electron": "8.2.3",
+    "electron": "^28.0.0",
     "eslint": "^6.8.0",
     "eslint-plugin-prettier": "^3.1.3",
     "eslint-plugin-vue": "^6.2.2",
     "prettier": "^2.0.5",
     "sass": "^1.26.3",
     "sass-loader": "^8.0.2",
-    "typescript": "~4.1.5",
+    "typescript": "~4.4.4",
     "vue-cli-plugin-electron-builder": "^1.4.6",
-    "vue-template-compiler": "^2.6.11",
+    "vue-template-compiler": "^2.7.16",
     "vuetify-loader": "^1.9.1",
     "webpack-bundle-analyzer": "^3.7.0"
   },
-  "cmake-js": {
-    "runtime": "electron",
-    "runtimeVersion": "^8.2.2"
-  },
-  "iohook": {
-    "targets": [
-      "node-72",
-      "electron-76"
-    ],
-    "platforms": [
-      "win32",
-      "darwin",
-      "linux"
-    ],
-    "arches": [
-      "x64"
-    ]
+  "allowScripts": {
+    "core-js@3.6.5": true,
+    "electron@28.3.3": true
   }
 }

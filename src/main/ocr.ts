@@ -26,11 +26,17 @@ export class Recognizer {
 
   getShortcutCapture() {
     if (!this.shortcutCapture) {
-      const ShortcutCapture = require("shortcut-capture");
-      this.shortcutCapture = new ShortcutCapture();
-      this.shortcutCapture.on("capture", (data: any) =>
-        this.recognize(data["dataURL"])
-      );
+      try {
+        const req = eval("require");
+        const ShortcutCapture = req("shortcut-capture");
+        this.shortcutCapture = new ShortcutCapture();
+        this.shortcutCapture.on("capture", (data: any) =>
+          this.recognize(data["dataURL"])
+        );
+      } catch (e) {
+        logger.toast("截屏捕获模块在当前系统不可用");
+        this.shortcutCapture = { shortcutCapture: () => {} };
+      }
     }
     return this.shortcutCapture;
   }

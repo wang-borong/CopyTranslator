@@ -56,9 +56,9 @@ export async function fetchModels(
     } else {
       throw new Error("API 返回格式不正确");
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("[模型获取] 失败:", error);
-    
+
     // 提供更友好的错误信息
     if (error.response) {
       // API 返回了错误响应
@@ -117,7 +117,7 @@ export async function validateAPIConfig(
       valid: true,
       models,
     };
-  } catch (error) {
+  } catch (error: any) {
     return {
       valid: false,
       error: error.message || "验证失败",

@@ -1,0 +1,54 @@
+name: Linux Build
+
+on:
+  push:
+    branches: [ master, main, linux ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libarchive-tools \
+            libicns-utils \
+            graphicsmagick \
+            libopenjp2-7 \
+            rpm \
+            fakeroot \
+            dpkg
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Prebuild
+        run: npm run prebuild
+
+      - name: Build Linux Package (AppImage & deb)
+        run: npx vue-cli-service electron:build --linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CopyTranslator-Linux-Packages
+          path: |
+            dist_electron/*.AppImage
+            dist_electron/*.deb

@@ -3,6 +3,7 @@ import { RouteActionType } from "../../common/types";
 import createProtocol from "./create-protocol";
 import { BrowserWindow } from "electron";
 import { env, icon } from "../../common/env";
+import * as path from "path";
 
 export function insertStyles(window: BrowserWindow) {
   window.webContents.on("did-finish-load", function () {
@@ -49,6 +50,8 @@ export const defaultConfig = {
   icon: icon,
   webPreferences: {
     nodeIntegration: true,
+    contextIsolation: false,
     webSecurity: false,
+    preload: path.join(__dirname, "preload.js"),
   },
 };

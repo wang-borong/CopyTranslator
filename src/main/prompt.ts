@@ -1,8 +1,9 @@
 import { env } from "@/common/env";
-import { BrowserWindow, ipcMain, remote } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 
 const url = require("url");
 const path = require("path");
+const remoteMain = require("@electron/remote/main");
 
 const DEFAULT_WIDTH = 370;
 const DEFAULT_KEYBIND_WIDTH = 420;
@@ -98,10 +99,11 @@ export function electronPrompt(options: any, parentWindow?: BrowserWindow) {
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
-        enableRemoteModule: options_.enableRemoteModule,
+        preload: path.join(__dirname, "preload.js"),
       },
       show: false,
     });
+    remoteMain.enable(promptWindow.webContents);
 
     if (options_.enableRemoteModule) {
       throw "not implemented";

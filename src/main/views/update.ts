@@ -2,6 +2,7 @@ import { dialog, BrowserWindow, ipcMain } from "electron";
 import { env, icon, osType } from "@/common/env";
 import { Controller } from "@/main/controller";
 import path from "path";
+const remoteMain = require("@electron/remote/main");
 import {
   constants,
   getChangelogURL,
@@ -138,8 +139,8 @@ export class UpdateChecker {
             path.join(env.externalResource, "update", "changelog.html")
           );
           win.webContents.once("did-finish-load", () => {
-            let buff = Buffer.from(url, "utf-8");
-            let base64data = buff.toString("base64"); //这里因为是直接传，所以可能会存在一些问题，看看如果先加密再解密会不会好点
+            const buff = Buffer.from(url, "utf-8");
+            const base64data = buff.toString("base64"); //这里因为是直接传，所以可能会存在一些问题，看看如果先加密再解密会不会好点
             win.webContents.executeJavaScript(`fetchPage("${base64data}");`);
           });
         });
@@ -165,9 +166,12 @@ export class UpdateChecker {
         autoHideMenuBar: true,
         webPreferences: {
           nodeIntegration: true,
+          contextIsolation: false,
           webSecurity: false,
+          preload: path.join(__dirname, "preload.js"),
         },
       }) as BrowserWindow;
+      remoteMain.enable(win.webContents);
       win.on("closed", (e: any) => {
         this.win = undefined;
       });

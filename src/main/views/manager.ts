@@ -14,6 +14,7 @@ import eventBus from "@/common/event-bus";
 import { LayoutConfig } from "@/common/rule";
 import bus from "@/common/event-bus";
 import os from "os";
+const remoteMain = require("@electron/remote/main");
 
 import qs from "qs";
 
@@ -101,7 +102,7 @@ export class WindowManager {
       return;
     }
     const oldLayoutType = config.get<LayoutType>("layoutType");
-    let windowConfig = config.get<LayoutConfig>(oldLayoutType);
+    const windowConfig = config.get<LayoutConfig>(oldLayoutType);
     const window = this.mainWindow;
     config.set(oldLayoutType, {
       ...windowConfig,
@@ -114,7 +115,7 @@ export class WindowManager {
       return;
     }
     const layoutType = config.get<LayoutType>("layoutType");
-    let windowConfig = config.get<LayoutConfig>(layoutType);
+    const windowConfig = config.get<LayoutConfig>(layoutType);
     this.mainWindow.setBounds(windowConfig);
   }
 
@@ -156,7 +157,8 @@ export class WindowManager {
   edgeHide(hideDirection: HideDirection) {
     const window = this.mainWindow;
     const bounds = window.getBounds();
-    let { x, y, width, height } = bounds;
+    let { x, y } = bounds;
+    const { width, height } = bounds;
     const { x: xBound, width: screenWidth } = screen.getDisplayMatching(
       bounds
     ).bounds;
@@ -192,7 +194,8 @@ export class WindowManager {
   edgeShow() {
     const window = this.mainWindow;
     const bounds = window.getBounds();
-    let { x, y, width, height } = bounds;
+    let { x, y } = bounds;
+    const { width, height } = bounds;
     const { x: xBound, width: screenWidth } = screen.getDisplayMatching(
       bounds
     ).bounds;
@@ -222,13 +225,14 @@ export class WindowManager {
     if (!this.controller.get("autoHide")) {
       return "None";
     }
-    let bound = window.getBounds();
-    let { x, y, width } = bound;
+    const bound = window.getBounds();
+    let { x } = bound;
+    const { y, width } = bound;
     const { x: xBound, width: screenWidth } = screen.getDisplayMatching(
       bound
     ).bounds;
     x -= xBound;
-    let xEnd = x + width;
+    const xEnd = x + width;
 
     if (x <= 0) return "Left";
     if (xEnd >= screenWidth) {
@@ -246,14 +250,7 @@ export class WindowManager {
     window.show();
     window.moveTop();
     if (os.platform() == "win32") {
-      try {
-        //https://github.com/electron/electron/issues/2867
-        //https://www.npmjs.com/package/@adeperio/forcefocus
-        const forceFocus = require("@adeperio/forcefocus");
-        forceFocus.focusWindow(window);
-      } catch (e) {
-        console.error(e);
-      }
+      // forcefocus removed for cross-platform Linux support
     }
   }
 
@@ -286,6 +283,7 @@ export class WindowManager {
       alwaysOnTop: config.get<boolean>("stayTop"),
     };
     const window = new BrowserWindow(cfg);
+    remoteMain.enable(window.webContents);
 
     if (!cfg.show) {
       window.once("ready-to-show", () => {
@@ -326,7 +324,7 @@ export class WindowManager {
       show: false,
       frame: false,
       title: "CopyTranslator",
-      transparent: true,
+      transparent: os.platform() !== "linux",
     };
     const previous_config = config.get<LayoutConfig>(config.get("layoutType"));
     window_config = { ...window_config, ...previous_config };

@@ -57,7 +57,7 @@ function detectPortableMode(): boolean {
   try {
     const exeDir = dirname(process.execPath);
     const portableDir = join(exeDir, "copytranslator");
-    
+
     // 检查目录是否存在且是文件夹
     if (existsSync(portableDir)) {
       try {

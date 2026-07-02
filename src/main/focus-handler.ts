@@ -28,17 +28,22 @@ function checkList(windowName: string, identifier: BlackWhiteType): boolean {
 export async function isValidWindow(
   identifier: BlackWhiteType
 ): Promise<boolean> {
-  return activeWindow().then((res: any) => {
-    if (!res) {
-      return false;
-    }
-    const windowName = res.owner.name.toString();
-    console.log(identifier, windowName);
-    const windows = new Set(config.get<string[]>("activeWindows"));
-    if (!windows.has(windowName)) {
-      windows.add(windowName);
-      config.set("activeWindows", [...windows]);
-    }
-    return checkList(windowName, identifier);
-  });
+  return activeWindow()
+    .then((res: any) => {
+      if (!res) {
+        return false;
+      }
+      const windowName = res.owner.name.toString();
+      console.log(identifier, windowName);
+      const windows = new Set(config.get<string[]>("activeWindows"));
+      if (!windows.has(windowName)) {
+        windows.add(windowName);
+        config.set("activeWindows", [...windows]);
+      }
+      return checkList(windowName, identifier);
+    })
+    .catch((err: any) => {
+      console.warn("activeWindow check failed, falling back to true:", err);
+      return true;
+    });
 }

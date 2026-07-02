@@ -1,5 +1,7 @@
 "use strict";
 import { app, protocol } from "electron";
+const remoteMain = require("@electron/remote/main");
+remoteMain.initialize();
 const gotTheLock = app.requestSingleInstanceLock();
 
 console.time("before-ready");
@@ -24,7 +26,6 @@ import { Controller } from "./main/controller";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
-app.allowRendererProcessReuse = false;
 app.setAppUserModelId("com.copytranslator.copytranslator");
 
 const controller = new Controller();
@@ -57,8 +58,11 @@ app.on("activate", (event, hasVisibleWindows) => {
   }
 });
 
-// 禁用本地缓存
-// app.commandLine.appendSwitch("--disable-http-cache");
+// 针对 Linux 环境下的渲染稳定性优化
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+  app.commandLine.appendSwitch("enable-features", "WaylandWindowDecorations");
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
