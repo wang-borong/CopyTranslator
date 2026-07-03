@@ -116,6 +116,16 @@ const keyAliases: Record<string, string> = {
 };
 
 const isMacPlatform = () => /mac|iphone|ipad|ipod/i.test(navigator.platform);
+const editableShortcutActions = new Set([
+  "undo",
+  "redo",
+  "cut",
+  "copy",
+  "paste",
+  "pasteAndMatchStyle",
+  "selectAll",
+  "delete",
+]);
 
 const normalizeShortcutPart = (part: string) => part.trim().toLowerCase().replace(/\s+/g, "");
 
@@ -159,14 +169,66 @@ const acceleratorMatchesEvent = (accelerator: Accelerator, event: KeyboardEvent)
 };
 
 const isEditableShortcutTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) return false;
+  return getEditableShortcutTarget(target) !== null;
+};
+
+const getEditableShortcutTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return null;
   const tagName = target.tagName.toLowerCase();
+  if (target.isContentEditable) {
+    return (target.closest("[contenteditable='true']") as HTMLElement | null) || target;
+  }
+  if (tagName === "input" || tagName === "textarea" || tagName === "select") {
+    return target;
+  }
+  return null;
+};
+
+const isEditableShortcutAction = (id: string) => editableShortcutActions.has(id);
+
+const isStandardEditableShortcutEvent = (event: KeyboardEvent) => {
+  if (event.altKey) return false;
+  const primaryModifier = isMacPlatform()
+    ? event.metaKey && !event.ctrlKey
+    : event.ctrlKey && !event.metaKey;
+  if (!primaryModifier) return false;
+
+  const key = normalizeShortcutKey(event.key);
   return (
-    target.isContentEditable ||
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select"
+    key === "z" ||
+    key === "x" ||
+    key === "c" ||
+    key === "v" ||
+    key === "a"
   );
+};
+
+const focusEditableTarget = (target: HTMLElement) => {
+  if (typeof target.focus === "function") {
+    target.focus();
+  }
+};
+
+const selectEditableTargetContent = (target: HTMLElement) => {
+  focusEditableTarget(target);
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    target.select();
+    return true;
+  }
+  if (target.isContentEditable) {
+    const selection = window.getSelection();
+    if (!selection) return false;
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }
+  return false;
+};
+
+const notifyEditableTargetInput = (target: HTMLElement) => {
+  target.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
 export class RendererController extends CommonController {
@@ -176,6 +238,7 @@ export class RendererController extends CommonController {
   transCon = new TranslateController(this);
   private globalShortcutUnlisten: UnlistenFn | null = null;
   private localShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
+  private webviewZoom = 1;
 
   set(identifier: Identifier, value: any): boolean {
     return this.config.set(identifier, value);
@@ -327,17 +390,102 @@ export class RendererController extends CommonController {
   }
 
   private dispatchShortcut(id: string) {
+    if (this.handleRoleShortcut(id)) {
+      return;
+    }
     this.action.dispatch(id as Identifier);
   }
 
-  private canHandleLocalShortcut(id: string, target: EventTarget | null) {
-    if (roles.includes(id as Role)) {
+  private handleEditableShortcut(id: string, target: EventTarget | null) {
+    if (!isEditableShortcutAction(id)) {
       return false;
     }
-    if (!isEditableShortcutTarget(target)) {
-      return true;
+
+    const editableTarget = getEditableShortcutTarget(target);
+    if (!editableTarget) {
+      return false;
     }
-    return ["hideWindow", "closeWindow"].includes(id);
+
+    if (id === "paste" || id === "pasteAndMatchStyle") {
+      return false;
+    }
+
+    if (id === "selectAll") {
+      return selectEditableTargetContent(editableTarget);
+    }
+
+    focusEditableTarget(editableTarget);
+    const command = id === "delete" ? "delete" : id;
+    try {
+      const handled = document.execCommand(command);
+      if (handled && id !== "copy") {
+        notifyEditableTargetInput(editableTarget);
+      }
+      return handled;
+    } catch (err) {
+      console.warn(`Failed to execute edit shortcut ${id}:`, err);
+      return false;
+    }
+  }
+
+  private async adjustWebviewZoom(delta: number) {
+    this.webviewZoom = clampNumber(this.webviewZoom + delta, 0.5, 3);
+    try {
+      await getCurrentWebview().setZoom(this.webviewZoom);
+    } catch (err) {
+      console.warn("Failed to adjust webview zoom:", err);
+    }
+  }
+
+  private handleRoleShortcut(id: string) {
+    if (!roles.includes(id as Role)) {
+      return false;
+    }
+
+    switch (id as Role) {
+      case "undo":
+      case "redo":
+      case "cut":
+      case "copy":
+      case "paste":
+      case "pasteAndMatchStyle":
+      case "selectAll":
+      case "delete":
+        return false;
+      case "quit":
+      case "close":
+        getCurrentWindow().close();
+        return true;
+      case "minimize":
+        getCurrentWindow().minimize();
+        return true;
+      case "reload":
+      case "forceReload":
+        window.location.reload();
+        return true;
+      case "togglefullscreen":
+        {
+          const window = getCurrentWindow();
+          window.isFullscreen()
+            .then((fullscreen) => window.setFullscreen(!fullscreen))
+            .catch((err) => console.warn("Failed to toggle fullscreen:", err));
+        }
+        return true;
+      case "resetZoom":
+        this.webviewZoom = 1;
+        getCurrentWebview()
+          .setZoom(this.webviewZoom)
+          .catch((err) => console.warn("Failed to reset webview zoom:", err));
+        return true;
+      case "zoomIn":
+        this.adjustWebviewZoom(0.1);
+        return true;
+      case "zoomOut":
+        this.adjustWebviewZoom(-0.1);
+        return true;
+      default:
+        return false;
+    }
   }
 
   private bindLocalShortcuts(shortcuts: Map<string, Accelerator>) {
@@ -347,12 +495,25 @@ export class RendererController extends CommonController {
 
     this.localShortcutHandler = (event: KeyboardEvent) => {
       if (event.repeat) return;
+      const targetIsEditable = isEditableShortcutTarget(event.target);
       for (const [id, accelerator] of shortcuts.entries()) {
         const normalizedAccelerator = String(accelerator || "").trim();
-        if (!normalizedAccelerator || !this.canHandleLocalShortcut(id, event.target)) {
+        if (!normalizedAccelerator) {
           continue;
         }
         if (acceleratorMatchesEvent(normalizedAccelerator, event)) {
+          if (targetIsEditable && isEditableShortcutAction(id)) {
+            if (this.handleEditableShortcut(id, event.target)) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            return;
+          }
+
+          if (targetIsEditable && isStandardEditableShortcutEvent(event)) {
+            return;
+          }
+
           event.preventDefault();
           event.stopPropagation();
           this.dispatchShortcut(id);
