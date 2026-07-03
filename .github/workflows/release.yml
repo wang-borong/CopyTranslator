@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version, for example 12.1.1 or v12.1.1"
+        description: "Release version, for example 13.0.0 or v13.0.0"
         required: true
         type: string
       draft:
@@ -67,7 +67,8 @@ jobs:
             libxdo-dev \
             patchelf \
             pkg-config \
-            wget
+            wget \
+            zstd
 
       - name: Install frontend dependencies
         run: npm ci
@@ -132,7 +133,8 @@ jobs:
             libxdo-dev \
             patchelf \
             pkg-config \
-            wget
+            wget \
+            zstd
 
       - name: Install frontend dependencies
         run: npm ci
@@ -150,6 +152,27 @@ jobs:
           releaseBody: |
             CopyTranslator ${{ steps.release-version.outputs.tag }}
 
-            Downloads for Windows, macOS and Linux are attached below.
+            Downloads for Windows, macOS, Linux and Arch Linux are attached below.
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft }}
           prerelease: ${{ contains(steps.release-version.outputs.tag, 'alpha') || contains(steps.release-version.outputs.tag, 'beta') || contains(steps.release-version.outputs.tag, 'rc') || (github.event_name == 'workflow_dispatch' && inputs.prerelease) }}
+
+      - name: Build Arch Linux package
+        if: runner.os == 'Linux'
+        run: node scripts/package-archlinux.mjs ${{ steps.release-version.outputs.version }}
+
+      - name: Upload Arch Linux package
+        if: runner.os == 'Linux'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release-version.outputs.tag }}
+          name: CopyTranslator ${{ steps.release-version.outputs.tag }}
+          body: |
+            CopyTranslator ${{ steps.release-version.outputs.tag }}
+
+            Downloads for Windows, macOS, Linux and Arch Linux are attached below.
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft }}
+          prerelease: ${{ contains(steps.release-version.outputs.tag, 'alpha') || contains(steps.release-version.outputs.tag, 'beta') || contains(steps.release-version.outputs.tag, 'rc') || (github.event_name == 'workflow_dispatch' && inputs.prerelease) }}
+          files: dist/release/copytranslator.tar.zst
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

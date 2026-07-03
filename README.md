@@ -191,7 +191,9 @@ Linux notes:
 
 ## Release
 
-The GitHub Actions workflow builds and checks Windows, macOS and Linux.
+The GitHub Actions workflow builds and checks Windows, macOS and Linux. The
+Linux release job also uploads an Arch Linux package named
+`copytranslator.tar.zst`.
 
 Release builds are created when:
 

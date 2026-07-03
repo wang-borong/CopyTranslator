@@ -158,7 +158,8 @@ Linux 说明：
 
 ## 发布
 
-GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。
+GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。Linux
+发布任务会额外上传 Arch Linux 安装包 `copytranslator.tar.zst`。
 
 以下情况会触发 Release 构建：
 
