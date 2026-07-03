@@ -93,16 +93,18 @@ const actionItemClass = (action: ActionView) => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  padding-right: 4px;
 }
 .options-group {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  background: rgba(var(--v-theme-surface), 0.72);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 .options-group-title {
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
 }
@@ -118,6 +120,7 @@ const actionItemClass = (action: ActionView) => {
 }
 .options-restore {
   margin-top: 4px;
+  max-width: 260px;
 }
 @media (max-width: 680px) {
   .options-grid {

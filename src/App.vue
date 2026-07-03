@@ -54,7 +54,22 @@ body,
   -webkit-font-smoothing: antialiased;
   font-family: "Microsoft YaHei", Arial, Helvetica, sans-serif;
 }
+* {
+  scrollbar-color: rgba(128, 128, 128, 0.42) transparent;
+  scrollbar-width: thin;
+}
 ::-webkit-scrollbar {
-  display: none;
+  height: 8px;
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.38);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.58);
 }
 </style>

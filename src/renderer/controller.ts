@@ -3,7 +3,9 @@ import {
   Identifier,
   LayoutType,
   MenuActionType,
+  Role,
   layoutTypes,
+  roles,
 } from "../common/types";
 import store, { observers } from "../store";
 import bus from "../common/event-bus";
@@ -12,6 +14,7 @@ import router from "../router";
 import { getCurrentWindow, type Color } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 const openUrl = (url: string) => {
   invoke("open_url", { url }).catch(err => {
     console.error("Failed to open URL:", err);
@@ -24,6 +27,11 @@ import { constants, isLower, version } from "../common/constant";
 import { RenController } from "../common/controller";
 import simulate from "../main/simulate";
 import { en, zh_cn } from "../common/locales";
+import {
+  type Accelerator,
+  loadGlobalShortcuts,
+  loadLocalShortcuts,
+} from "../common/shortcuts";
 
 const localeMap = {
   "zh-CN": zh_cn,
@@ -74,12 +82,101 @@ const clampNumber = (value: number, min: number, max: number) => {
   return Math.min(max, Math.max(min, value));
 };
 
+type ShortcutRegistrationResult = {
+  id: string;
+  accelerator: string;
+  ok: boolean;
+  error?: string;
+};
+
+type GlobalShortcutPayload = {
+  id: string;
+  accelerator: string;
+};
+
+const modifierAliases: Record<string, string[]> = {
+  cmdorctrl: ["cmdorctrl", "commandorcontrol"],
+  ctrl: ["ctrl", "control"],
+  cmd: ["cmd", "command", "meta", "super"],
+  alt: ["alt", "option"],
+  shift: ["shift"],
+};
+
+const keyAliases: Record<string, string> = {
+  esc: "escape",
+  spacebar: "space",
+  " ": "space",
+  arrowup: "up",
+  arrowdown: "down",
+  arrowleft: "left",
+  arrowright: "right",
+  del: "delete",
+  return: "enter",
+  plus: "+",
+};
+
+const isMacPlatform = () => /mac|iphone|ipad|ipod/i.test(navigator.platform);
+
+const normalizeShortcutPart = (part: string) => part.trim().toLowerCase().replace(/\s+/g, "");
+
+const normalizeShortcutKey = (key: string) => {
+  const normalized = normalizeShortcutPart(key);
+  return keyAliases[normalized] || normalized;
+};
+
+const acceleratorParts = (accelerator: Accelerator) =>
+  accelerator
+    .split("+")
+    .map(normalizeShortcutPart)
+    .filter((part) => part.length > 0);
+
+const hasModifier = (parts: string[], name: keyof typeof modifierAliases) =>
+  parts.some((part) => modifierAliases[name].includes(part));
+
+const acceleratorMatchesEvent = (accelerator: Accelerator, event: KeyboardEvent) => {
+  const parts = acceleratorParts(accelerator);
+  if (parts.length === 0) return false;
+
+  const wantsCmdOrCtrl = hasModifier(parts, "cmdorctrl");
+  const wantsCtrl = hasModifier(parts, "ctrl") || (wantsCmdOrCtrl && !isMacPlatform());
+  const wantsMeta = hasModifier(parts, "cmd") || (wantsCmdOrCtrl && isMacPlatform());
+  const wantsAlt = hasModifier(parts, "alt");
+  const wantsShift = hasModifier(parts, "shift");
+  const keyPart = parts.find(
+    (part) =>
+      !Object.values(modifierAliases).some((aliases) => aliases.includes(part))
+  );
+
+  if (!keyPart) return false;
+  if (event.ctrlKey !== wantsCtrl) return false;
+  if (event.metaKey !== wantsMeta) return false;
+  if (event.altKey !== wantsAlt) return false;
+  if (event.shiftKey !== wantsShift) return false;
+
+  const eventKey = normalizeShortcutKey(event.key);
+  const eventCode = normalizeShortcutKey(event.code.replace(/^Key/, "").replace(/^Digit/, ""));
+  return normalizeShortcutKey(keyPart) === eventKey || normalizeShortcutKey(keyPart) === eventCode;
+};
+
+const isEditableShortcutTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select"
+  );
+};
+
 export class RendererController extends RenController {
   private static _instance: RendererController;
   app: any;
   keys: Identifier[] = [];
   transCon = new TranslateController(this as any);
   proxy: any = this; // Self-reference for compatibility with code calling proxy
+  private globalShortcutUnlisten: UnlistenFn | null = null;
+  private localShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
 
   set(identifier: Identifier, value: any): boolean {
     return this.config.set(identifier, value);
@@ -121,6 +218,7 @@ export class RendererController extends RenController {
 
     this.initApp();
     this.applyNativeTransparency();
+    this.reloadShortcuts();
     bus.at("initialized");
 
     if (initError) {
@@ -227,6 +325,88 @@ export class RendererController extends RenController {
         }
       });
     });
+  }
+
+  private dispatchShortcut(id: string) {
+    this.action.dispatch(id as Identifier);
+  }
+
+  private canHandleLocalShortcut(id: string, target: EventTarget | null) {
+    if (roles.includes(id as Role)) {
+      return false;
+    }
+    if (!isEditableShortcutTarget(target)) {
+      return true;
+    }
+    return ["hideWindow", "closeWindow"].includes(id);
+  }
+
+  private bindLocalShortcuts(shortcuts: Map<string, Accelerator>) {
+    if (this.localShortcutHandler) {
+      document.removeEventListener("keydown", this.localShortcutHandler, true);
+    }
+
+    this.localShortcutHandler = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      for (const [id, accelerator] of shortcuts.entries()) {
+        const normalizedAccelerator = String(accelerator || "").trim();
+        if (!normalizedAccelerator || !this.canHandleLocalShortcut(id, event.target)) {
+          continue;
+        }
+        if (acceleratorMatchesEvent(normalizedAccelerator, event)) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.dispatchShortcut(id);
+          return;
+        }
+      }
+    };
+    document.addEventListener("keydown", this.localShortcutHandler, true);
+  }
+
+  private async bindGlobalShortcuts(shortcuts: Map<string, Accelerator>) {
+    if (this.globalShortcutUnlisten) {
+      this.globalShortcutUnlisten();
+      this.globalShortcutUnlisten = null;
+    }
+
+    this.globalShortcutUnlisten = await listen<GlobalShortcutPayload>(
+      "global-shortcut",
+      (event) => {
+        if (event.payload?.id) {
+          this.dispatchShortcut(event.payload.id);
+        }
+      }
+    );
+
+    const registrations = Array.from(shortcuts.entries())
+      .map(([id, accelerator]) => ({
+        id,
+        accelerator: String(accelerator || "").trim(),
+      }))
+      .filter(({ accelerator }) => accelerator.length > 0);
+    const results = (await invoke("configure_global_shortcuts", {
+      shortcuts: registrations,
+    })) as ShortcutRegistrationResult[];
+    const failed = results.filter((result) => !result.ok);
+    if (failed.length > 0) {
+      const first = failed[0];
+      this.toast(
+        `${this.text("shortcutRegisterFailed", "快捷键注册失败")}: ${first.accelerator}`,
+        true
+      );
+      console.warn("Failed to register shortcuts:", failed);
+    }
+  }
+
+  async reloadShortcuts() {
+    try {
+      this.bindLocalShortcuts(loadLocalShortcuts());
+      await this.bindGlobalShortcuts(loadGlobalShortcuts());
+    } catch (err) {
+      console.warn("Failed to reload shortcuts:", err);
+      this.toast(this.text("shortcutReloadFailed", "快捷键加载失败"), true);
+    }
   }
 
   private normalizeReleaseTag(tag: string) {

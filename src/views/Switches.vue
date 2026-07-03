@@ -67,6 +67,9 @@ const restore = () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  height: 100%;
+  overflow: auto;
+  padding-right: 4px;
 }
 .switch-groups {
   display: grid;
@@ -74,13 +77,14 @@ const restore = () => {
   gap: 12px;
 }
 .switch-group {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  background: rgba(var(--v-theme-surface), 0.72);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 .switch-group-title {
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
 }
@@ -94,6 +98,7 @@ const restore = () => {
 }
 .switch-restore {
   margin-top: 4px;
+  max-width: 260px;
 }
 @media (max-width: 520px) {
   .switch-grid {

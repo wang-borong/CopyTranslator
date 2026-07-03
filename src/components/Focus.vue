@@ -22,12 +22,12 @@
         @contextmenu.prevent="base.openMenu('focusContext')"
       >
         <div v-if="(config.focusSource && mode=='normal')">
-          <div>{{ trans["source"] }}:</div>
-          <div class="focusText" id="focusSource" contenteditable="true">
+          <div class="focus-label">{{ trans["source"] }}</div>
+          <div class="focusText focus-block" id="focusSource" contenteditable="true">
             {{ sharedResult ? sharedResult.text : '' }}
           </div>
-          <div>{{ trans["result"] }}:</div>
-          <div class="focusText" contenteditable="true">
+          <div class="focus-label">{{ trans["result"] }}</div>
+          <div class="focusText focus-block" contenteditable="true">
             {{ sharedResult ? sharedResult.translation : '' }}
           </div>
         </div>
@@ -153,6 +153,33 @@ const getModifiedText = () => {
 .focusText {
   resize: none;
   line-height: var(--content-line-height);
+  background: transparent;
+  border: 0;
+  box-sizing: border-box;
+  color: inherit;
+  outline: none;
+  word-break: break-word;
+}
+.focusText:focus {
+  box-shadow: inset 0 0 0 1px var(--ct-focus-ring, rgba(142, 36, 170, 0.42));
+}
+.focus-block {
+  border: 1px solid var(--ct-panel-border, rgba(128, 128, 128, 0.16));
+  border-radius: 8px;
+  min-height: 82px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+.focus-block + .focus-label {
+  margin-top: 12px;
+}
+.focus-label {
+  color: var(--ct-muted-color, rgba(128, 128, 128, 0.9));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  margin-bottom: 6px;
+  user-select: none;
 }
 .max {
   height: 100%;

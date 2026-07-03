@@ -43,6 +43,14 @@ export function resetLocalShortcuts() {
   resetFile("local_shortcuts", defaultLocalShortcuts);
 }
 
+export function saveGlobalShortcuts(config: Map<string, Accelerator>) {
+  resetFile("global_shortcuts", config);
+}
+
+export function saveLocalShortcuts(config: Map<string, Accelerator>) {
+  resetFile("local_shortcuts", config);
+}
+
 export function loadFile(
   keyName: string,
   defaultConfig: Map<string, Accelerator>

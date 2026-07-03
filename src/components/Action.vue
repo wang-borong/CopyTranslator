@@ -3,12 +3,16 @@
     <v-tooltip v-if="action" location="bottom" open-delay="100" :disabled="!tooltip">
       <template v-slot:activator="{ props }">
         <div class="actionStyle" v-bind="props">
-          <div v-if="action.actionType === 'checkbox'" class="action-row">
+          <div
+            v-if="action.actionType === 'checkbox'"
+            :class="['action-row', { 'action-row-active': Boolean(value) }]"
+          >
             <span class="action-label">{{ trans[action.id] }}</span>
             <v-switch
               v-model="value"
               class="action-switch"
               color="primary"
+              density="compact"
               hide-details
             ></v-switch>
           </div>
@@ -86,17 +90,24 @@
             v-else-if="action.actionType === 'multi_select'"
             :identifier="action.id"
           ></MultiSelect>
-          <div v-else-if="action.actionType === 'constant'" class="action-row">
+          <div
+            v-else-if="action.actionType === 'constant'"
+            class="action-row action-row-control"
+          >
             <span class="action-label">{{ trans[identifier] }}</span>
             <v-text-field
               v-model="value"
               class="action-control"
               :type="constantInputType"
-              dense
+              density="compact"
+              variant="outlined"
               hide-details
             ></v-text-field>
           </div>
-          <div v-else-if="action.actionType === 'submenu'" class="action-row">
+          <div
+            v-else-if="action.actionType === 'submenu'"
+            class="action-row action-row-control"
+          >
             <span class="action-label">{{ trans[identifier] }}</span>
             <v-select
               v-model="command"
@@ -104,7 +115,8 @@
               item-title="label"
               item-value="id"
               class="action-control"
-              dense
+              density="compact"
+              variant="outlined"
               hide-details
             >
             </v-select>
@@ -228,17 +240,41 @@ const actionLayoutClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 4px 6px;
+  gap: 10px;
+  min-height: 42px;
+  border-radius: 6px;
+  padding: 5px 8px;
+  position: relative;
+  transition: background-color 0.12s ease;
+}
+.action-row:hover {
+  background: rgba(var(--v-theme-on-surface), 0.045);
+}
+.action-row-active {
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+.action-row-active::before {
+  background: rgb(var(--v-theme-primary));
+  border-radius: 999px;
+  content: "";
+  height: 18px;
+  left: 2px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
 }
 .action-label {
   flex: 1 1 auto;
+  font-size: 13px;
+  line-height: 18px;
+  min-width: 0;
   text-align: left;
 }
 .action-control {
   flex: 0 0 auto;
-  min-width: 160px;
-  max-width: 260px;
+  max-width: 240px;
+  min-width: 150px;
 }
 .action-switch {
   margin: 0;
@@ -261,5 +297,19 @@ const actionLayoutClass = computed(() => {
 .pStyle {
   margin-bottom: 4px;
   text-align: left;
+}
+
+@media (max-width: 560px) {
+  .action-row-control {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .action-control {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
 }
 </style>

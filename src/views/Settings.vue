@@ -1,6 +1,6 @@
 <template>
-  <div style="height: 100vh;">
-    <v-app style="height: 100%;" :style="appStyle">
+  <div class="settings-root">
+    <v-app class="settings-app" :style="appStyle">
       <v-app-bar color="primary" dense :height="titlebarHeight">
         <v-spacer style="height: 100%;">
           <div class="dragableDiv" data-tauri-drag-region></div>
@@ -17,28 +17,16 @@
         @contextmenu="openMenu('snapshotManage')"
       >
         <div class="mytab-container">
-          <v-tabs v-model="tab" direction="vertical" class="mytab-header">
-            <v-tab value="translation">{{ trans["translate"] }}</v-tab>
-            <v-tab value="appearance">{{ trans["appearance"] }}</v-tab>
-            <v-tab value="switches">{{ trans["switches"] }}</v-tab>
-            <v-tab value="translatorManager">{{
-              trans["translatorManagement"] || "翻译器管理"
-            }}</v-tab>
-            <v-tab value="customTranslators">{{
-              trans["customTranslators"]
-            }}</v-tab>
-            <v-tab value="networkProxy">{{
-              trans["networkProxy"] || "网络代理"
-            }}</v-tab>
-            <v-tab value="ocrConfig">{{ trans["ocrConfig"] }}</v-tab>
-            <v-tab value="listenClipboardConfig">{{
-              trans["listenClipboardConfig"]
-            }}</v-tab>
-            <v-tab value="dragCopyConfig">{{ trans["dragCopyConfig"] }}</v-tab>
-            <v-tab value="snapshotManage">{{ trans["snapshotManage"] }}</v-tab>
-            <v-tab value="actionButtons">{{ trans["actionButtons"] }}</v-tab>
-            <v-tab value="other">{{ trans["other"] }}</v-tab>
-            <v-tab value="about">{{ trans["about"] }}</v-tab>
+          <v-tabs v-model="tab" direction="vertical" class="mytab-header" density="compact">
+            <v-tab
+              v-for="item in settingsTabs"
+              :key="item.value"
+              :value="item.value"
+              class="settings-tab"
+            >
+              <v-icon size="18">{{ item.icon }}</v-icon>
+              <span>{{ trans[item.label] || item.fallback }}</span>
+            </v-tab>
           </v-tabs>
 
           <v-tabs-window v-model="tab" class="mytab-content">
@@ -50,6 +38,9 @@
             </v-tabs-window-item>
             <v-tabs-window-item value="switches">
               <Switches :cates="['basic', 'advance']"></Switches>
+            </v-tabs-window-item>
+            <v-tabs-window-item value="shortcuts">
+              <ShortcutSettings></ShortcutSettings>
             </v-tabs-window-item>
             <v-tabs-window-item value="translatorManager">
               <TranslatorManager></TranslatorManager>
@@ -105,6 +96,7 @@ import ActionButtonConfig from "@/components/ActionButtonConfig.vue";
 import TranslatorManager from "./TranslatorManager.vue";
 import NetworkProxy from "./NetworkProxy.vue";
 import OcrConfig from "./OcrConfig.vue";
+import ShortcutSettings from "./ShortcutSettings.vue";
 import bus from "@/common/event-bus";
 import "@/css/shared-styles.css";
 
@@ -115,6 +107,93 @@ const base = useBaseView(() => undefined);
 const trans = base.trans;
 const appStyle = base.appStyle;
 const titlebarHeight = base.titlebarHeight;
+
+const settingsTabs = [
+  {
+    value: "translation",
+    label: "translate",
+    fallback: "翻译",
+    icon: "mdi-translate",
+  },
+  {
+    value: "appearance",
+    label: "appearance",
+    fallback: "外观",
+    icon: "mdi-palette-outline",
+  },
+  {
+    value: "switches",
+    label: "switches",
+    fallback: "开关",
+    icon: "mdi-toggle-switch-outline",
+  },
+  {
+    value: "shortcuts",
+    label: "shortcuts",
+    fallback: "快捷键",
+    icon: "mdi-keyboard-outline",
+  },
+  {
+    value: "translatorManager",
+    label: "translatorManagement",
+    fallback: "翻译器管理",
+    icon: "mdi-translate-variant",
+  },
+  {
+    value: "customTranslators",
+    label: "customTranslators",
+    fallback: "自定义翻译器",
+    icon: "mdi-robot-outline",
+  },
+  {
+    value: "networkProxy",
+    label: "networkProxy",
+    fallback: "网络代理",
+    icon: "mdi-lan",
+  },
+  {
+    value: "ocrConfig",
+    label: "ocrConfig",
+    fallback: "OCR",
+    icon: "mdi-text-recognition",
+  },
+  {
+    value: "listenClipboardConfig",
+    label: "listenClipboardConfig",
+    fallback: "监听剪贴板",
+    icon: "mdi-clipboard-text-outline",
+  },
+  {
+    value: "dragCopyConfig",
+    label: "dragCopyConfig",
+    fallback: "拖拽复制",
+    icon: "mdi-cursor-move",
+  },
+  {
+    value: "snapshotManage",
+    label: "snapshotManage",
+    fallback: "配置快照",
+    icon: "mdi-camera-outline",
+  },
+  {
+    value: "actionButtons",
+    label: "actionButtons",
+    fallback: "动作按钮",
+    icon: "mdi-gesture-tap-button",
+  },
+  {
+    value: "other",
+    label: "other",
+    fallback: "其他",
+    icon: "mdi-dots-horizontal-circle-outline",
+  },
+  {
+    value: "about",
+    label: "about",
+    fallback: "关于",
+    icon: "mdi-information-outline",
+  },
+];
 
 const tab = computed({
   get: () => (route.query.tab as string) || "translation",
@@ -136,7 +215,12 @@ onMounted(() => {
 
 <style scoped>
 ::-webkit-scrollbar {
-  display: auto;
+  height: 8px;
+  width: 8px;
+}
+.settings-root,
+.settings-app {
+  height: 100vh;
 }
 .dragableDiv {
   height: 100%;
@@ -144,23 +228,55 @@ onMounted(() => {
 }
 .setting {
   height: calc(100% - 5px);
-  padding-right: 10px;
-  padding-left: 10px;
+  padding: 0 12px 12px;
   overflow: hidden;
 }
 .mytab-container {
   display: flex;
+  gap: 12px;
   height: 100%;
   width: 100%;
 }
 .mytab-header {
-  flex: 0 0 160px;
-  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  align-self: stretch;
+  background: rgba(var(--v-theme-surface), 0.78);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  flex: 0 0 190px;
+  overflow: hidden auto;
+  padding: 6px;
+  scrollbar-width: thin;
 }
 .mytab-content {
   flex: 1;
   height: 100%;
   overflow-y: auto;
-  padding-left: 15px;
+  padding: 0 2px 0 0;
+}
+.mytab-header :deep(.v-tab) {
+  border-radius: 6px;
+  justify-content: flex-start;
+  min-height: 38px;
+  padding-inline: 10px;
+}
+.mytab-header :deep(.v-tab.v-slide-group-item--active) {
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+.mytab-header :deep(.v-btn__content) {
+  gap: 8px;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-align: left;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .mytab-container {
+    flex-direction: column;
+  }
+
+  .mytab-header {
+    flex: 0 0 auto;
+    max-height: 150px;
+  }
 }
 </style>

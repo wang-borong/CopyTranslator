@@ -10,15 +10,18 @@
       style="margin: 0px; display: flex;"
     >
       <div
-        class="areaWarpper"
+        class="areaWarpper panel-section"
         v-bind:style="leftStyle"
         @wheel="wheelHandler($event, 'source')"
         @keydown.ctrl.187="keyboardFontHandler($event, 'source')"
         @keydown.ctrl.189="keyboardFontHandler($event, 'source')"
       >
+        <div class="panel-header">
+          <span>{{ sourceTitle }}</span>
+        </div>
         <textarea
           v-bind:style="sourceFontStyle"
-          class="hArea"
+          class="hArea panel-body"
           :placeholder="trans['source'] || 'Source'"
           @keyup.ctrl.enter="translate"
           @keyup.ctrl.g="google"
@@ -40,17 +43,20 @@
         @mousedown="mousedown"
       ></div>
       <div
-        class="areaWarpper"
+        class="areaWarpper panel-section"
         v-bind:style="rightStyle"
         @wheel="wheelHandler($event, 'result')"
         tabindex="-1"
         @keydown.ctrl.187="keyboardFontHandler($event, 'result')"
         @keydown.ctrl.189="keyboardFontHandler($event, 'result')"
       >
-        <DiffTextArea v-if="multiSource" class="hArea"></DiffTextArea>
+        <div class="panel-header">
+          <span>{{ resultTitle }}</span>
+        </div>
+        <DiffTextArea v-if="multiSource" class="hArea panel-body"></DiffTextArea>
         <CoTextArea
           v-else-if="!base.config.value['contrastDict'] || !dictResult.valid"
-          class="hArea"
+          class="hArea panel-body"
           v-bind:style="resultFontStyle"
           :sentences="sharedResult ? sharedResult.transPara : []"
           :chineseStyle="sharedResult ? sharedResult.chineseStyle : false"
@@ -58,20 +64,23 @@
         ></CoTextArea>
         <DictResultPanel
           v-else-if="base.config.value['contrastDict'] && dictResult.valid"
-          class="hArea"
+          class="hArea panel-body"
         ></DictResultPanel>
       </div>
     </div>
     <div v-else class="maxNoPad">
       <div
         :style="topStyle"
-        class="areaWarpper"
+        class="areaWarpper panel-section"
         @wheel="wheelHandler($event, 'source')"
         @keydown.ctrl.187="keyboardFontHandler($event, 'source')"
         @keydown.ctrl.189="keyboardFontHandler($event, 'source')"
         @keyup.ctrl.enter="translate"
         @contextmenu.prevent="base.openMenu('contrastContext')"
       >
+        <div class="panel-header">
+          <span>{{ sourceTitle }}</span>
+        </div>
         <textarea
           v-bind:style="sourceFontStyle"
           :placeholder="trans['source'] || 'Source'"
@@ -79,7 +88,7 @@
           @keyup.ctrl.g="google"
           @keyup.ctrl.b="baidu"
           @keyup.ctrl.p="command"
-          class="vArea"
+          class="vArea panel-body"
           v-model="sourceText"
         ></textarea>
       </div>
@@ -91,15 +100,18 @@
       ></div>
       <div
         :style="bottomStyle"
-        class="areaWarpper"
+        class="areaWarpper panel-section"
         @wheel="wheelHandler($event, 'result')"
         @keydown.ctrl.187="keyboardFontHandler($event, 'result')"
         @keydown.ctrl.189="keyboardFontHandler($event, 'result')"
         tabindex="-1"
       >
-        <DiffTextArea v-if="multiSource" class="vArea"></DiffTextArea>
+        <div class="panel-header">
+          <span>{{ resultTitle }}</span>
+        </div>
+        <DiffTextArea v-if="multiSource" class="vArea panel-body"></DiffTextArea>
         <CoTextArea
-          class="vArea"
+          class="vArea panel-body"
           v-else-if="!base.config.value['contrastDict'] || !dictResult.valid"
           v-bind:style="resultFontStyle"
           :sentences="sharedResult ? sharedResult.transPara : []"
@@ -108,7 +120,7 @@
         ></CoTextArea>
         <DictResultPanel
           v-else-if="base.config.value['contrastDict'] && dictResult.valid"
-          class="vArea"
+          class="vArea panel-body"
         ></DictResultPanel>
       </div>
     </div>
@@ -122,6 +134,7 @@ import Focus from "./Focus.vue";
 import CoTextArea from "./CoTextArea.vue";
 import DiffTextArea from "./DiffTextArea.vue";
 import DictResultPanel from "./DictResult.vue";
+import { TranslatorNameResolver } from "@/common/translate/translator-name-resolver";
 
 const base = useBaseView(() => getModifiedText());
 
@@ -162,9 +175,16 @@ const sourceText = computed({
 const ratio = computed({
   get: () => base.layoutConfig.value.ratio || 0.5,
   set: (val: number) => {
-    base.updateLayoutConfig({ ratio: val });
+    base.updateLayoutConfig({ ratio: clampRatio(val) });
   }
 });
+
+const clampRatio = (val: number) => {
+  if (!Number.isFinite(val)) {
+    return 0.5;
+  }
+  return Math.min(0.85, Math.max(0.15, val));
+};
 
 const mousedown = (e: MouseEvent) => {
   x.value = e.clientX;
@@ -310,6 +330,14 @@ const translate = base.translate;
 const google = base.google;
 const baidu = base.baidu;
 const command = base.command;
+
+const sourceTitle = computed(() => trans.value["source"] || "Source");
+const resultTitle = computed(() => {
+  if (multiSource.value) {
+    return trans.value["multiSource"] || "Multi-source";
+  }
+  return TranslatorNameResolver.getDisplayName(base.currentEngine.value, trans.value);
+});
 </script>
 
 <style scoped>
@@ -324,6 +352,7 @@ const command = base.command;
   border: 0;
   outline: none;
   background: transparent;
+  transition: box-shadow 0.12s ease;
 }
 .vArea {
   width: 100%;
@@ -335,10 +364,11 @@ const command = base.command;
   border: 0;
   outline: none;
   background: transparent;
+  transition: box-shadow 0.12s ease;
 }
 .hArea:focus,
 .vArea:focus {
-  box-shadow: inset 0 0 0 1px rgba(142, 36, 170, 0.42);
+  box-shadow: inset 0 0 0 1px var(--ct-focus-ring, rgba(142, 36, 170, 0.42));
 }
 .hArea::placeholder,
 .vArea::placeholder {
@@ -355,17 +385,76 @@ const command = base.command;
 .areaWarpper {
   padding: 0px;
   overflow: hidden;
+  background: var(--ct-panel-bg, transparent);
 }
+
+.panel-section {
+  border: 1px solid var(--ct-panel-border, rgba(128, 128, 128, 0.16));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel-header {
+  align-items: center;
+  background: var(--ct-panel-header-bg, transparent);
+  border-bottom: 1px solid var(--ct-panel-border, rgba(128, 128, 128, 0.16));
+  color: currentColor;
+  display: flex;
+  flex: 0 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  justify-content: space-between;
+  line-height: 18px;
+  opacity: 0.8;
+  padding: 0 var(--content-padding);
+  user-select: none;
+}
+
+.panel-body {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
 .focusArea {
   overflow: auto;
 }
 
 .resizer {
   user-select: none;
-  background-color: rgba(142, 36, 170, 0.32);
+  background-color: var(--ct-resizer, rgba(142, 36, 170, 0.32));
+  position: relative;
   transition: background-color 0.12s ease;
 }
 .resizer:hover {
-  background-color: rgba(142, 36, 170, 0.72);
+  background-color: var(--ct-resizer-hover, rgba(142, 36, 170, 0.72));
+}
+
+.resizer::after {
+  background: var(--ct-resizer-grip, rgba(255, 255, 255, 0.52));
+  border-radius: 999px;
+  content: "";
+  left: 50%;
+  opacity: 0;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.12s ease;
+}
+
+#hDrag::after {
+  height: 34px;
+  width: 2px;
+}
+
+#vDrag::after {
+  height: 2px;
+  width: 34px;
+}
+
+.resizer:hover::after {
+  opacity: 1;
 }
 </style>

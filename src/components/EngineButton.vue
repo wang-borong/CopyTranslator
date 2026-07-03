@@ -64,6 +64,19 @@ const switchTranslator = () => {
 </script>
 
 <style scoped>
+.engineBtnBase {
+  border-radius: 8px !important;
+  transition:
+    filter 0.12s ease,
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.engineBtnBase:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
 .inactive {
   filter: grayscale(90%);
 }

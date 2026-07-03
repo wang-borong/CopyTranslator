@@ -22,14 +22,12 @@
           right_click="settings"
           icon="mdi-menu"
         ></ActionButton>
-        <div class="noSelect" style="overflow: hidden;">
-          <p
-            style="margin-top: auto; margin-bottom: auto; white-space: nowrap;"
-            class="hidden-mobile"
-            v-if="!isMini"
-          >
-            {{ trans[base.layoutType.value] }}
-          </p>
+        <div class="titlebar-meta noSelect" v-if="!isMini">
+          <span class="titlebar-pill">{{ trans[base.layoutType.value] }}</span>
+          <span class="titlebar-pill titlebar-engine">{{ currentEngineName }}</span>
+          <span class="titlebar-status" :style="{ '--status-color': badgeColor }">
+            {{ statusLabel }}
+          </span>
         </div>
         <v-spacer
           style="height: calc(100% - 1px); padding-top: 1px;"
@@ -171,6 +169,7 @@ import {
   hexToRgb,
   colorStatusMap,
 } from "../common/types";
+import { TranslatorNameResolver } from "@/common/translate/translator-name-resolver";
 import "@/css/shared-styles.css";
 
 const base = useBaseView(() => undefined);
@@ -221,7 +220,13 @@ const valid = computed(() => {
   return false;
 });
 
-const isMini = computed(() => base.config.value.transparency > 0);
+const isMini = computed(() => windowWidth.value < 420 || base.titlebarHeightVal.value < 26);
+
+const currentEngineName = computed(() =>
+  TranslatorNameResolver.getDisplayName(base.currentEngine.value, trans.value)
+);
+
+const statusLabel = computed(() => trans.value[base.status.value] || base.status.value);
 
 onMounted(() => {
   if (!base.config.value.neverShowTips) dialog.value = true;
@@ -292,12 +297,8 @@ const drawerStyle = computed(() => ({
   "border-width": "2px 0px 2px 2px",
   "border-style": "solid",
   "border-color": barColor.value,
-  "--drawer-hover-bg": base.isDarkTheme.value
-    ? "rgba(255, 255, 255, 0.08)"
-    : "rgba(17, 24, 39, 0.06)",
-  "--drawer-group-color": base.isDarkTheme.value
-    ? "rgba(255, 255, 255, 0.52)"
-    : "rgba(17, 24, 39, 0.56)",
+  "--drawer-hover-bg": "var(--ct-hover-soft)",
+  "--drawer-group-color": "var(--ct-muted-color)",
 }));
 
 const drawer = computed({
@@ -325,6 +326,29 @@ const barColor = computed(() => {
 
 const transparency = computed(() => ({
   background: backgroundColor.value,
+  "--ct-panel-bg": base.isDarkTheme.value
+    ? "rgba(17, 24, 39, 0.18)"
+    : "rgba(255, 255, 255, 0.18)",
+  "--ct-panel-header-bg": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.055)"
+    : "rgba(17, 24, 39, 0.045)",
+  "--ct-panel-border": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.13)"
+    : "rgba(17, 24, 39, 0.12)",
+  "--ct-muted-color": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.64)"
+    : "rgba(17, 24, 39, 0.62)",
+  "--ct-hover-soft": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.08)"
+    : "rgba(17, 24, 39, 0.055)",
+  "--ct-focus-ring": barColor.value,
+  "--ct-resizer": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.14)"
+    : "rgba(17, 24, 39, 0.12)",
+  "--ct-resizer-hover": barColor.value,
+  "--ct-resizer-grip": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.72)"
+    : "rgba(255, 255, 255, 0.9)",
 }));
 
 const borderRadius = "10px";
@@ -400,6 +424,46 @@ onUnmounted(() => {
   border-radius: var(--border-radius) !important;
 }
 
+.titlebar-meta {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.titlebar-pill,
+.titlebar-status {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.94);
+  display: inline-flex;
+  font-size: 12px;
+  line-height: 18px;
+  max-width: 132px;
+  overflow: hidden;
+  padding: 1px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titlebar-engine {
+  max-width: 168px;
+}
+
+.titlebar-status::before {
+  background: var(--status-color);
+  border-radius: 50%;
+  content: "";
+  display: inline-block;
+  height: 7px;
+  margin-right: 6px;
+  width: 7px;
+}
+
 .window-container .rounded-top-bar {
   border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
   overflow: hidden !important;
@@ -435,6 +499,7 @@ onUnmounted(() => {
 
 .window-container .rounded-left-drawer .v-navigation-drawer__content {
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .drawer-groups {
@@ -447,6 +512,7 @@ onUnmounted(() => {
 
 .drawer-group-title {
   color: var(--drawer-group-color);
+  font-weight: 600;
   font-size: 12px;
   line-height: 18px;
   padding: 4px 8px;

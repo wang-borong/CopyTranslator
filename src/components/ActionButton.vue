@@ -6,7 +6,6 @@
         color="primary"
         size="small"
         depressed
-        tile
         :variant="config.transparency > 0.5 && onContrast ? 'outlined' : 'flat'"
         class="btn"
         :style="{ height: btnSize.height, width: btnSize.width }"
@@ -88,7 +87,21 @@ const btnSize = computed(() => {
 
 <style scoped>
 .btn {
+  border-radius: 6px !important;
   padding: 0px !important;
   min-width: 0px !important;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.btn:hover {
+  opacity: 0.92;
+}
+
+.btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.56);
+  outline-offset: -2px;
 }
 </style>

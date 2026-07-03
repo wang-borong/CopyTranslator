@@ -6,26 +6,36 @@
     v-if="dictResult && dictResult.valid"
     @contextmenu.prevent="base.openMenu('contrastContext')"
   >
-    <p class="dictSrc noMargin">[{{ dictResult.words }}]</p>
-    <div v-if="dictResult.phonetics && dictResult.phonetics.length != 0">
-      <p class="notation noMargin">{{ trans["phonetic"] }}:</p>
-      <span
-        class="dictPhonetic noMargin"
-        v-for="item in dictResult.phonetics"
-        :key="item.type + item.value"
-      >
-        [{{ item.type }}]{{ item.value }} &nbsp;
-      </span>
+    <div class="dict-word">{{ dictResult.words }}</div>
+    <div
+      v-if="dictResult.phonetics && dictResult.phonetics.length != 0"
+      class="dict-section"
+    >
+      <div class="notation">{{ trans["phonetic"] }}</div>
+      <div class="dict-phonetics">
+        <span
+          class="dictPhonetic"
+          v-for="item in dictResult.phonetics"
+          :key="item.type + item.value"
+        >
+          <span class="dict-phonetic-type">{{ item.type }}</span>
+          {{ item.value }}
+        </span>
+      </div>
     </div>
-    <div v-if="dictResult.explains && dictResult.explains.length > 0">
-      <p class="notation noMargin">{{ trans["basicExplains"] }}:</p>
-      <p
+    <div
+      v-if="dictResult.explains && dictResult.explains.length > 0"
+      class="dict-section"
+    >
+      <div class="notation">{{ trans["basicExplains"] }}</div>
+      <div
         class="dictExp noMargin"
         v-for="item in dictResult.explains"
         :key="item.type + item.trans"
       >
-        {{ item.type.length > 0 ? "[" + item.type + "] " : "" }}{{ item.trans }}
-      </p>
+        <span v-if="item.type.length > 0" class="dict-type">{{ item.type }}</span>
+        <span>{{ item.trans }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -52,26 +62,75 @@ const dictStyle = computed(() => {
 <style scoped>
 .dict {
   text-align: left;
-  margin-top: 0%;
-  padding-top: 0%;
-  top: 0%;
   height: 100%;
+  overflow: auto;
+  padding: 10px 12px;
+  box-sizing: border-box;
 }
 
 .notation {
-  color: cornflowerblue;
+  color: var(--ct-muted-color, rgba(128, 128, 128, 0.9));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 18px;
+  margin-bottom: 6px;
 }
 
-.dictSrc {
-  color: deeppink;
+.dict-word {
+  color: rgb(var(--v-theme-primary));
+  font-size: 1.22em;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
+.dict-section {
+  border-top: 1px solid var(--ct-panel-border, rgba(128, 128, 128, 0.16));
+  padding-top: 10px;
+}
+
+.dict-section + .dict-section {
+  margin-top: 10px;
 }
 
 .dictExp {
-  margin-left: 10vw;
   overflow: hidden;
+  display: flex;
+  gap: 8px;
+  line-height: 1.6;
+  padding: 3px 0;
 }
-.dictPhonetic {
-  margin-left: 10vw;
+
+.dict-phonetics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dictPhonetic,
+.dict-type {
+  align-items: center;
+  background: var(--ct-hover-soft, rgba(128, 128, 128, 0.1));
+  border: 1px solid var(--ct-panel-border, rgba(128, 128, 128, 0.16));
+  border-radius: 6px;
+  display: inline-flex;
+  line-height: 18px;
+  padding: 2px 6px;
+}
+
+.dict-type {
+  color: var(--ct-muted-color, rgba(128, 128, 128, 0.9));
+  flex: 0 0 auto;
+  font-size: 0.88em;
+  margin-top: 2px;
+}
+
+.dict-phonetic-type {
+  color: var(--ct-muted-color, rgba(128, 128, 128, 0.9));
+  font-size: 0.86em;
+  margin-right: 4px;
 }
 .noMargin {
   margin: 0px;

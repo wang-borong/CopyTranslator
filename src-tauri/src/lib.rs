@@ -11,6 +11,7 @@ use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 const MIN_LINUX_WINDOW_OPACITY: f64 = 0.25;
 
@@ -134,6 +135,71 @@ fn set_window_opacity(window: tauri::Window, opacity: f64) -> Result<(), String>
     }
 
     Ok(())
+}
+
+#[derive(Deserialize)]
+struct ShortcutRegistration {
+    id: String,
+    accelerator: String,
+}
+
+#[derive(Serialize)]
+struct ShortcutRegistrationResult {
+    id: String,
+    accelerator: String,
+    ok: bool,
+    error: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct ShortcutTrigger {
+    id: String,
+    accelerator: String,
+}
+
+#[tauri::command]
+fn configure_global_shortcuts(
+    app: tauri::AppHandle,
+    shortcuts: Vec<ShortcutRegistration>,
+) -> Result<Vec<ShortcutRegistrationResult>, String> {
+    let manager = app.global_shortcut();
+    manager.unregister_all().map_err(|e| e.to_string())?;
+
+    let mut results = Vec::with_capacity(shortcuts.len());
+    for shortcut in shortcuts {
+        let id = shortcut.id.trim().to_string();
+        let accelerator = shortcut.accelerator.trim().to_string();
+        if id.is_empty() || accelerator.is_empty() {
+            continue;
+        }
+
+        let event_payload = ShortcutTrigger {
+            id: id.clone(),
+            accelerator: accelerator.clone(),
+        };
+        let register_result = manager.on_shortcut(accelerator.as_str(), move |app, _, event| {
+            if event.state == ShortcutState::Pressed {
+                let _ = app.emit("global-shortcut", event_payload.clone());
+            }
+        });
+
+        match register_result {
+            Ok(()) => results.push(ShortcutRegistrationResult {
+                id,
+                accelerator,
+                ok: true,
+                error: None,
+            }),
+            Err(err) => results.push(ShortcutRegistrationResult {
+                id,
+                accelerator,
+                ok: false,
+                error: Some(err.to_string()),
+            }),
+        }
+    }
+
+    Ok(results)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -578,6 +644,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_listen_clipboard,
             set_window_opacity,
+            configure_global_shortcuts,
             fetch_http_proxy,
             simulate_copy,
             simulate_paste,
