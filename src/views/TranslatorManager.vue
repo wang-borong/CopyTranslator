@@ -105,7 +105,7 @@
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="translator-config-panel">
-                    <KeyConfig :identifier="translator.id"></KeyConfig>
+                    <KeyConfig :identifier="translatorIdentifier(translator.id)"></KeyConfig>
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -249,6 +249,8 @@ const buildTranslatorList = () => {
   });
 };
 
+const translatorIdentifier = (translatorId: string) => translatorId as Identifier;
+
 watch([enabledTranslators, cacheTranslators], () => {
   buildTranslatorList();
 }, { deep: true });
@@ -262,7 +264,7 @@ const updateEnabled = (translatorId: string, enabled: boolean) => {
     applyEnabledTranslators([...enabledTranslators.value, translatorId]);
   } else {
     applyEnabledTranslators(
-      enabledTranslators.value.filter((id) => id !== translatorId)
+      enabledTranslators.value.filter((id: string) => id !== translatorId)
     );
   }
 };
@@ -312,11 +314,11 @@ const applyEnabledTranslators = (newEnabled: string[]) => {
   const allowed = new Set(
     getAvailableTranslatorIds(availableTranslators.value, custom)
   );
-  const enabled = Array.from(new Set(newEnabled)).filter((id) =>
+  const enabled = Array.from(new Set(newEnabled)).filter((id: string) =>
     allowed.has(id)
   );
   const activeSet = new Set(getEnabledWithCustomIds(enabled, custom));
-  const cache = cacheTranslators.value.filter((id) => activeSet.has(id));
+  const cache = cacheTranslators.value.filter((id: string) => activeSet.has(id));
   const compare = (
     base.config.value["translator-compare"] || []
   ).filter((id: string) => activeSet.has(id));

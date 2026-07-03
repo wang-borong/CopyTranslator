@@ -7,41 +7,37 @@ sidebarDepth: 6
 ## 编译源码
 
 ### 项目结构
-- dist_electron: 编译的输出
+- dist: 前端构建输出
+- src-tauri: Tauri v2 后端与桌面打包配置
 - dist_locales: 翻译文件
 - docs: 本文档的源码
 
 ### 编译环境要求
-- Nodejs v12
-- yarn v1 # 不要使用v2
+- Node.js 20 或更新版本
+- Rust stable，建议 1.77.2 或更新版本
+- Tauri v2 所需系统依赖
 
-对于windows用户, 你需要先执行`yarn global add windows-build-tools`.
 ```bash
-git clone https://github.com/copytranslator/CopyTranslator.git
+git clone https://github.com/wang-borong/CopyTranslator.git
 cd CopyTranslator
-yarn
-yarn rebuild
+npm ci
 ```
 要调试和运行程序：
 ```bash
-npm run electron:serve
+npm run tauri dev
 ```
 要编译为可分发的程序：
 ```bash
-npm run electron:build
+npm run tauri build
 ```
-按照上述说明操作时，程序能运行，但是翻译引擎不工作，这说明您的配置已经成功了，这是完全正常的，因为copytranslator依赖的opentranslate版本与开源版本opentranslate不完全一样。
 
-如果您是想编译了自己使用，请直接在设置中填入各个翻译引擎的api key使用。
-
-如果您想参与到copytranslator的跨平台移植当中，造福其他人，请联系我，我会指导您如何编译。
-
+如果您是想编译后自用，请在设置中填入需要的翻译引擎或 AI 供应商 API Key。
 
 ## Locale settings
 Using my own l10n module, for memory saving purpose. 
 ### For locale maintainers
 If you want to add a new locale, follow the instructions below.
 
-> view `json` files under `dist_locales` to see the format of the locale file, fork the repo and add a new `{{locale}}.json` file under the directory, and create a pull request.
+> View `json` files under `dist_locales` to see the format of the locale file, fork the repo and add a new `{{locale}}.json` file under the directory, and create a pull request.
 
-Welcome to join the `gitter` chat room at [here](https://gitter.im/CopyTranslator/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link), so you can get notified before new version release. You can create a pull request at any time as **the out of date locale file won't cause any error**, the program will go back to English for the missing words.
+Outdated locale files do not block startup. Missing keys fall back to English.

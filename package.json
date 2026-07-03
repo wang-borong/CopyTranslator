@@ -28,7 +28,6 @@
     "@opentranslate2/volc": "^1.4.42",
     "@opentranslate2/yandex": "^1.4.42",
     "@opentranslate2/youdao": "^1.4.42",
-    "@wtfcode/vue-merge": "^2.0.3",
     "axios": "0.19.2",
     "diff": "^5.0.0",
     "eazydict-bing": "https://github.com/CopyTranslator/eazydict-bing.git",
@@ -42,6 +41,7 @@
     "lodash.trimstart": "^4.5.1",
     "pinia": "^2.1.7",
     "sbd": "^1.0.18",
+    "tslib": "^2.8.1",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "vuetify": "^3.5.8",
@@ -49,13 +49,13 @@
     "winston-daily-rotate-file": "^4.4.2"
   },
   "devDependencies": {
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^20.11.24",
     "@vitejs/plugin-vue": "^5.0.4",
     "sass": "^1.71.1",
     "typescript": "^5.3.3",
     "vite": "^5.1.4",
-    "vue-tsc": "^1.8.27"
+    "vue-tsc": "^3.3.6"
   }
 }

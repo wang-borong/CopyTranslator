@@ -27,13 +27,10 @@ export class CustomTranslatorManager {
   private initialized = false;
 
   private constructor() {
-    if (process.type === "renderer") {
-      eventBus.once("initialized", () => {
-        this.reload();
-      });
-    } else {
-      this.tryInitialize();
-    }
+    eventBus.once("initialized", () => {
+      this.reload();
+    });
+    this.tryInitialize();
   }
 
   /**
@@ -139,16 +136,9 @@ export class CustomTranslatorManager {
           if (translatorConfig) {
             this.customConfigs.set(translatorId, translatorConfig);
 
-            // 渲染进程优化：不在渲染进程创建实际的翻译器实例，避免加载重型依赖
-            if (process.type !== "renderer") {
-              const translator = this.createTranslator(translatorConfig);
-              this.customTranslators.set(translatorId, translator);
-              console.debug(`[供应商管理] 生成翻译器实例: ${translatorId}`);
-            } else {
-              console.debug(
-                `[供应商管理] 跳过生成翻译器实例 (渲染进程): ${translatorId}`
-              );
-            }
+            const translator = this.createTranslator(translatorConfig);
+            this.customTranslators.set(translatorId, translator);
+            console.debug(`[供应商管理] 生成翻译器实例: ${translatorId}`);
           }
         } catch (error) {
           console.error(

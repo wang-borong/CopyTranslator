@@ -12,7 +12,7 @@
 ![Vue](https://img.shields.io/badge/Vue-3.x-42b883)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
-CopyTranslator 是一款面向阅读、写作、论文和日常工作的桌面翻译助手。本仓库是迁移优化版本：已经将原 Electron 外壳迁移到 Tauri 2，同时保留“复制即翻译”的核心体验，并加入更现代的界面、AI 翻译、OCR、快捷键配置、透明窗口和跨平台 Release 构建。
+CopyTranslator 是一款面向阅读、写作、论文和日常工作的桌面翻译助手。本仓库是迁移优化版本：已经完成 Tauri 2 桌面端迁移，同时保留“复制即翻译”的核心体验，并加入更现代的界面、AI 翻译、OCR、快捷键配置、透明窗口和跨平台 Release 构建。
 
 ## 版本亮点
 

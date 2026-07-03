@@ -27,7 +27,7 @@ import { computed } from "vue";
 import { useBase } from "@/components/useBase";
 import Action from "../components/Action.vue";
 import SimpleButton from "@/components/SimpleButton.vue";
-import { Category, ActionView } from "../common/types";
+import { Category, ActionView, Identifier } from "../common/types";
 
 const props = defineProps<{
   cates: Category[];
@@ -44,7 +44,7 @@ const actionKeys = computed(() =>
 
 const groupActions = computed<ActionView[][]>(() =>
   actionKeys.value.map((keys) =>
-    keys.map((id) => (window as any).$controller.action.getAction(id))
+    keys.map((id: Identifier) => (window as any).$controller.action.getAction(id))
   )
 );
 

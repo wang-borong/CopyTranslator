@@ -1,19 +1,18 @@
 import { Rule, CheckResult } from "./rule";
 import { ConfigSnapshot, ConfigSnapshots, Identifier } from "./types";
 import { compatible, isLower, version } from "./constant";
-import store, { getConfigByKey, Config } from "../store";
+import store, { getConfigByKey } from "../store";
+import type { Config } from "../store/plugins/types";
 import {
   hasTranslator,
   getEnabledWithCustomIds,
 } from "./translate/translators";
 type Rules = Map<Identifier, Rule>; //类型别名
 import { invoke } from "@tauri-apps/api/core";
-import { env } from "../common/env";
 import bus from "./event-bus";
 
 class ConfigParser {
   rules: Rules = new Map<Identifier, Rule>();
-  file: string = env.configPath;
   lastSave = Date.now();
   notSavingKeys: Identifier[] = [];
 

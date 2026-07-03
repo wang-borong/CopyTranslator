@@ -167,6 +167,7 @@ import {
   abstractTranslatorTypes,
   hexToRgb,
   colorStatusMap,
+  ColorStatus,
 } from "../common/types";
 import { TranslatorNameResolver } from "@/common/translate/translator-name-resolver";
 import "@/css/shared-styles.css";
@@ -271,7 +272,7 @@ const popupStyle = computed(() => {
 
 const actionButtons = computed<ActionButtonType[]>(() => base.config.value.actionButtons || []);
 
-const badgeColor = computed(() => colorStatusMap.get(base.status.value) || "grey");
+const badgeColor = computed(() => colorStatusMap.get(base.status.value as ColorStatus) || "grey");
 
 const clampDrawerWidth = (value: number) => Math.min(360, Math.max(160, value));
 

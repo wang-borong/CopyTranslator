@@ -24,10 +24,6 @@ const connections = new Map<string, Response>([
 
 //协同响应,更新视图
 export const updateViewPlugin = (store: any) => {
-  //只在渲染进程做视图的更新
-  if (process.type != "renderer") {
-    return;
-  }
   store.subscribe((mutation: Mutation, state: any) => {
     const response = connections.get(mutation.type);
     if (response != undefined) {

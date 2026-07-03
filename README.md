@@ -14,7 +14,7 @@
 
 CopyTranslator is a desktop translation assistant for reading, writing and
 research workflows. This branch is the Tauri migration and optimization edition:
-the original Electron shell has been replaced by Tauri 2, while the app keeps
+the desktop shell now runs on Tauri 2, while the app keeps
 the core "copy to translate" workflow and adds a refreshed interface, AI
 translation, OCR, configurable shortcuts, transparent windows and modern
 cross-platform release builds.

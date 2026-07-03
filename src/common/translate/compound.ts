@@ -19,7 +19,7 @@ import { autoReSegment, notEnglish } from "./helper";
 import eventBus from "../event-bus";
 import config from "../configuration";
 import store from "@/store";
-import { tracker } from "@/main/tracker";
+import { tracker } from "@/tauri/tracker";
 
 class ResultBufferManager {
   public resultBufferMap = new Map<

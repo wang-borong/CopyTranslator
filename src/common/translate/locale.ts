@@ -3,7 +3,6 @@ import en from "@opentranslate2/languages/locales/en.json";
 import zhCN from "@opentranslate2/languages/locales/zh-CN.json";
 import zhTW from "@opentranslate2/languages/locales/zh-TW.json";
 import { Language } from "@opentranslate2/languages";
-// import { getDefaultLocale } from "@/main/l10n";
 
 export const languageLocales = new Map<Language, typeof en>([
   ["en", en],

@@ -20,12 +20,12 @@ const openUrl = (url: string) => {
     console.error("Failed to open URL:", err);
   });
 };
-import { TranslateController } from "../main/translate-controller";
+import { TranslateController } from "@/tauri/translate-controller";
 import config from "../common/configuration";
 import logger, { initLog } from "../common/logger";
 import { constants, isLower, version } from "../common/constant";
-import { RenController } from "../common/controller";
-import simulate from "../main/simulate";
+import { CommonController } from "../common/controller";
+import simulate from "@/tauri/simulate";
 import { en, zh_cn } from "../common/locales";
 import {
   type Accelerator,
@@ -169,12 +169,11 @@ const isEditableShortcutTarget = (target: EventTarget | null) => {
   );
 };
 
-export class RendererController extends RenController {
+export class RendererController extends CommonController {
   private static _instance: RendererController;
   app: any;
   keys: Identifier[] = [];
-  transCon = new TranslateController(this as any);
-  proxy: any = this; // Self-reference for compatibility with code calling proxy
+  transCon = new TranslateController(this);
   private globalShortcutUnlisten: UnlistenFn | null = null;
   private localShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
 

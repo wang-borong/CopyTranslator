@@ -107,6 +107,7 @@ const base = useBaseView(() => undefined);
 const trans = base.trans;
 const appStyle = base.appStyle;
 const titlebarHeight = base.titlebarHeight;
+const openMenu = base.openMenu;
 
 const settingsTabs = [
   {

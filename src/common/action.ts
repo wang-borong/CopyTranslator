@@ -72,8 +72,7 @@ const alias = new Map<string, string[]>([
   ["simulateIncrementCopy", ["incrementCounter", "simulateCopy"]],
 ]);
 
-//兼容旧版本的
-const isMain = process.type == "browser";
+const isBackendActionSource = false;
 
 class ActionManager {
   actions = new Map<Identifier, ActionView>();
@@ -99,7 +98,7 @@ class ActionManager {
       identifier,
       param,
       type: action.actionType,
-      isMain,
+      isBackend: isBackendActionSource,
     });
   }
 
@@ -262,7 +261,7 @@ class ActionManager {
       const langs: Language[] | undefined = isSource
         ? store.state.languages.sources
         : store.state.languages.targets;
-      return langs.filter((x) => {
+      return (langs || []).filter((x) => {
         if (!isSource && x == "auto") {
           return false;
         }

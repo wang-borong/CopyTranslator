@@ -63,7 +63,7 @@
             <div v-for="(line, k) in compareResult[engine]" :key="k">
               <span
                 v-for="(p, k2) in line"
-                :key="k + k2"
+                :key="`${k}-${k2}`"
                 :style="getStyle(p)"
                 >{{ p.value }}</span
               >

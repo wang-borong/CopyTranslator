@@ -37,6 +37,7 @@ export const normalActionTypes = [
   "toast",
   "incrementCounter",
   "simulateCopy",
+  "simulatePaste",
   "simulateIncrementCopy",
   "translateInput",
   "simpleDebug",
@@ -171,7 +172,7 @@ export const switchActionTypes = [
   "enableNetworkProxy",
 ] as const;
 
-//Electron 原生 角色
+// Built-in edit/window actions kept for in-window shortcut compatibility.
 export const roles = [
   "undo",
   "redo",

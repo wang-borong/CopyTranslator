@@ -48,7 +48,7 @@ const translatorItems = computed(() => {
 });
 
 const visibleValues = computed(
-  () => new Set(translatorItems.value.map((item) => item.value))
+  () => new Set(translatorItems.value.map((item: { value: string }) => item.value))
 );
 
 const normalizedValue = computed(() => {

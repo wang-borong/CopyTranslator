@@ -32,7 +32,7 @@ import {
   emptyDictResult,
 } from "../common/dictionary/types";
 import { clipboard } from "./clipboard";
-import { MainController } from "../common/controller";
+import { CommonController } from "../common/controller";
 import store from "@/store";
 import { recognizer } from "./ocr";
 import eventBus from "@/common/event-bus";
@@ -62,7 +62,7 @@ type TranslateOption = {
   engines?: (TranslatorType | string)[];
 };
 
-class TranslateController {
+export class TranslateController {
   translateResult: SharedResult | undefined;
   dictResult: SharedDictResult = emptyDictResult();
 
@@ -85,7 +85,7 @@ class TranslateController {
   translator: Compound = new Compound([...translatorTypes], "google", {});
   dictionary: Polymer = new Polymer("youdao");
 
-  controller: MainController;
+  controller: CommonController;
 
   get resultString() {
     if (this.translateResult) {
@@ -95,7 +95,7 @@ class TranslateController {
     }
   }
 
-  constructor(controller: MainController) {
+  constructor(controller: CommonController) {
     this.controller = controller;
   }
 
@@ -519,7 +519,7 @@ class TranslateController {
     this.postProcess(language, res);
   }
 
-  private async translateWithOption(options: TranslateOption = {}) {
+  async translateWithOption(options: TranslateOption = {}) {
     if (this.translating) {
       //保证翻译时不被打断
       return;
@@ -845,5 +845,3 @@ class TranslateController {
     return true;
   }
 }
-
-export { TranslateController };

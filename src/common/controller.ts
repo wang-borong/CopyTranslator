@@ -1,13 +1,12 @@
 import { Identifier, ActionInitOpt } from "./types";
 import config, { ConfigParser } from "./configuration";
-import type { Promisified } from "@/proxy/renderer";
 import { ActionManager } from "./action";
 import bus from "./event-bus";
 
-const currentProcessIsMain = process.type == "browser";
+const currentRuntimeIsBackend = false;
 
 type Handler1 = () => void;
-type Handler2 = (controller: MainController | RenController) => void;
+type Handler2 = (controller: CommonController) => void;
 
 export type Handler = Handler1 | Handler2;
 
@@ -15,7 +14,7 @@ type Args = {
   identifier: Identifier;
   param: any;
   type: ActionInitOpt["actionType"];
-  isMain: boolean;
+  isBackend: boolean;
 };
 
 export abstract class CommonController {
@@ -55,14 +54,19 @@ export abstract class CommonController {
 
   bind() {
     bus.gon("callback", (args: Args) => {
-      const { identifier, param, type: actionType, isMain: fromMain } = args;
+      const {
+        identifier,
+        param,
+        type: actionType,
+        isBackend: fromBackend,
+      } = args;
       console.debug(
         "action triggered",
         identifier,
         param,
         actionType,
-        fromMain,
-        currentProcessIsMain
+        fromBackend,
+        currentRuntimeIsBackend
       );
       switch (actionType) {
         case "normal":
@@ -72,9 +76,9 @@ export abstract class CommonController {
               this.handleWithLinks(identifier, param) ||
               this.handle(identifier, param)
             ) &&
-            fromMain == currentProcessIsMain
+            fromBackend == currentRuntimeIsBackend
           ) {
-            //跨进程动作，防止出现回声
+            // Forward only when another Tauri webview/runtime owns the action.
             bus.iat("callback", args);
           }
           break;
@@ -114,10 +118,4 @@ export abstract class CommonController {
       }
     });
   }
-}
-
-export abstract class MainController extends CommonController {}
-
-export abstract class RenController extends CommonController {
-  abstract proxy: Promisified<MainController>;
 }

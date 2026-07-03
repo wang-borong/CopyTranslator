@@ -1,122 +1,96 @@
-# 翻译实现机制完整分析
+# 翻译实现机制
 
-本文档对 CopyTranslator 的翻译实现进行端到端分析，覆盖主进程与渲染进程的数据流、动作与配置驱动方式、翻译与词典执行机制、多引擎缓存与对比、界面数据绑定、以及本地化资源生成与加载。目标是帮助后续开发者准确定位关键入口与修改点。
+本文档描述当前 Tauri v2 迁移版的翻译链路。旧桌面主进程代码已经移除，运行模型改为：
 
-## 1. 架构分层与数据流
+- 前端 WebView：Vue/Vuetify UI、动作分发、配置状态、翻译调度和结果展示。
+- Tauri Rust 后端：系统能力桥接，包括剪贴板监听、图片读取、OCR 请求、全局快捷键、窗口透明度、配置文件读写和打开系统路径。
 
-**进程与控制器**
-- 主进程负责翻译、剪贴板、OCR 与配置响应：初始化 `TranslateController` 并安装本地化模块：[controller.ts](src/main/controller.ts#L35-L192)
-- 渲染进程负责界面渲染与交互：通过代理将设置写回主进程：[controller.ts](src/renderer/controller.ts#L24-L113)
+## 1. 关键入口
 
-**状态与事件通道**
-- 全局状态保存在 Vuex：翻译结果、词典结果、语言列表、结果缓冲区与配置：[store/index.ts](src/store/index.ts#L13-L86)
-- 配置变更通过 `observePlugin` 通知观察者（主进程控制器与翻译控制器）：[observe.ts](src/store/plugins/observe.ts#L1-L31)
-- 视图层的联动更新由 `updateViewPlugin` 触发，常见用于语言下拉菜单刷新：[update-view.ts](src/store/plugins/update-view.ts#L1-L41)
+- 前端入口：[main.ts](../src/main.ts)
+- 应用控制器：[controller.ts](../src/renderer/controller.ts)
+- 翻译控制器：[translate-controller.ts](../src/tauri/translate-controller.ts)
+- Tauri 命令：[lib.rs](../src-tauri/src/lib.rs)
+- 配置规则：[configuration.ts](../src/common/configuration.ts)
+- 翻译器注册：[translators.ts](../src/common/translate/translators.ts)
+- AI 供应商管理：[custom-translators.ts](../src/common/translate/custom-translators.ts)
 
-## 2. 动作与配置驱动链路
+## 2. 数据流
 
-**动作分发**
-- 动作从 UI 或快捷键触发，经 `ActionManager` 构造菜单/动作并通过事件总线分发：[action.ts](src/common/action.ts#L72-L456)
-- 主进程 `Controller.handle` 负责路由动作，翻译相关操作转交给 `TranslateController.handle`：[controller.ts](src/main/controller.ts#L104-L177)、[translate-controller.ts](src/main/translate-controller.ts#L111-L178)
+1. Rust 后端监听剪贴板文本和图片变化。
+2. 后端通过 Tauri event 向前端发送 `clipboard-changed` 或 `clipboard-image-changed`。
+3. 前端剪贴板适配器接收事件：[clipboard.ts](../src/tauri/clipboard.ts)。
+4. `TranslateController` 读取文本、净化内容、判断语言和词典模式。
+5. `Compound` 根据当前引擎、缓存组、对比组和后备引擎调度翻译。
+6. 结果写入 Pinia 兼容状态层：[store/index.ts](../src/store/index.ts)。
+7. 对照模式、专注模式、多源对比和词典组件从状态层渲染结果。
 
-**配置与开关**
-- 配置项规则由 `configuration.ts` 定义，包括翻译开关与引擎组设置：[configuration.ts](src/common/configuration.ts#L139-L236)
-- 翻译相关配置变更最终由 `TranslateController.postSet` 触发实际行为切换：[translate-controller.ts](src/main/translate-controller.ts#L685-L738)
+## 3. 动作与配置
 
-## 3. 翻译触发与输入处理
+动作定义集中在 [action.ts](../src/common/action.ts)。UI、快捷键和右键菜单都会通过事件总线分发动作。
 
-**触发来源**
-- 显式动作：`translate`、`translateClipboard`、`doubleCopyTranslate` 等：[translate-controller.ts](src/main/translate-controller.ts#L111-L178)
-- 剪贴板监听：开启后持续监听文本变更并触发翻译：[translate-controller.ts](src/main/translate-controller.ts#L635-L661)
-- UI 触发：输入框 Ctrl+Enter 通过 `BaseView.translate` 发送动作：[BaseView.vue](src/components/BaseView.vue#L142-L152)、[ContrastPanel.vue](src/components/ContrastPanel.vue#L16-L79)
+常见动作：
 
-**文本预处理**
-- `normalizeText` 负责净化文本与单词判定前处理：[translate-controller.ts](src/main/translate-controller.ts#L306-L312)
-- 增量复制逻辑在 `setSrc` 中实现，针对中文与非中文拼接规则不同：[translate-controller.ts](src/main/translate-controller.ts#L196-L215)
-- 长度与重复校验在 `checkLength`、`checkValid`、`matchAnyResults` 中控制：[translate-controller.ts](src/main/translate-controller.ts#L242-L274)
+- `translate`：翻译指定文本。
+- `translateClipboard`：读取当前剪贴板文本并翻译。
+- `copySource` / `copyResult`：复制原文或译文。
+- `incrementCounter`：标记下一次复制为单次增量复制。
+- `capture`：读取剪贴板图片并触发 OCR。
+- `reloadCustomTranslators`：重新加载 AI 供应商模型。
 
-## 4. 语言决策与语言名称
+配置规则由 [configuration.ts](../src/common/configuration.ts) 定义。配置读写通过 Tauri 命令 `read_config` 和 `write_config` 完成，实际文件位于操作系统标准配置目录。
 
-**语言检测与智能互译**
-- `decideLanguage` 结合用户配置、翻译器检测与繁简识别决定源/目标语言：[translate-controller.ts](src/main/translate-controller.ts#L386-L428)
-- `smartTranslate` 当源/目标相同会尝试切换目标语言：[translate-controller.ts](src/main/translate-controller.ts#L418-L427)
+## 4. 翻译器调度
 
-**语言名称显示**
-- 语言名称来自 `getLanguageLocales`，由 `@opentranslate2/languages` 的本地化字典提供：[locale.ts](src/common/translate/locale.ts#L1-L20)
-- 翻译完成后 toast 显示语言名：[translate-controller.ts](src/main/translate-controller.ts#L493-L517)
+内置翻译器在 [translators.ts](../src/common/translate/translators.ts) 中注册。调度器 [compound.ts](../src/common/translate/compound.ts) 负责：
 
-## 5. 翻译执行与引擎调度
+- 检查引擎是否支持当前源语言和目标语言。
+- 在主引擎不支持时使用 `fallbackTranslator`。
+- 管理多源对比和缓存组的结果缓冲区。
+- 将每个引擎的翻译状态同步到界面。
 
-**翻译器注册**
-- 内置翻译器集中注册在 `translatorMap`，用于统一实例化与配置更新：[translators.ts](src/common/translate/translators.ts#L18-L62)
-- `translatorTypes` 与引擎组定义在类型模块中：[types.ts](src/common/types.ts#L85-L209)
+AI 翻译器通过 `translatorProviders` 配置扩展。每个供应商可以启用多个模型，`CustomTranslatorManager` 会把供应商和模型展开成独立翻译器 ID。
 
-**多引擎与后备策略**
-- `Compound.translate` 根据支持语言过滤引擎，主引擎不支持则用 `fallbackTranslator`：[compound.ts](src/common/translate/compound.ts#L124-L209)
-- 结果缓存由 `ResultBufferManager` 管理并同步到 Vuex：[compound.ts](src/common/translate/compound.ts#L17-L63)
+## 5. OCR
 
-**引擎组与多源模式**
-- 翻译器组由 `translator-enabled`、`translator-cache`、`translator-compare` 等配置控制：[types.ts](src/common/types.ts#L204-L209)
-- `TranslateController.translateSentence` 按当前模式选择引擎组：[translate-controller.ts](src/main/translate-controller.ts#L550-L570)
+OCR 入口在 [ocr.ts](../src/tauri/ocr.ts)。当前 Tauri 版本使用百度 OCR REST API：
 
-## 6. 词典系统与智能词典
+1. 前端调用 `read_clipboard_image` 读取剪贴板图片。
+2. 前端调用 `baidu_ocr`，将图片和 OCR 配置交给 Rust 后端。
+3. 后端请求百度 OCR API 并返回文本。
+4. 前端把 OCR 文本作为普通输入继续翻译。
 
-**词典引擎聚合**
-- `Polymer` 维护主词典引擎并并行查询其他引擎：[polymer.ts](src/common/dictionary/polymer.ts#L1-L40)
-- 词典类型与结果结构定义于 `dictionary/types.ts`：[types.ts](src/common/dictionary/types.ts#L1-L56)
-- 当前内置词典引擎由 `engines.ts` 注册：[engines.ts](src/common/dictionary/engines.ts#L1-L13)
+## 6. 快捷键
 
-**智能词典触发**
-- `isWord` 判断是否进入词典模式，受 `smartDict` 与增量复制影响：[translate-controller.ts](src/main/translate-controller.ts#L519-L525)
-- 词典查询与同步结果由 `queryDictionary` 完成：[translate-controller.ts](src/main/translate-controller.ts#L531-L548)
+快捷键配置在 [shortcuts.ts](../src/common/shortcuts.ts)。设置页负责编辑和保存快捷键：
 
-## 7. 结果同步、缓存与界面绑定
+- 全局快捷键通过 Tauri `tauri-plugin-global-shortcut` 注册。
+- 窗口内快捷键由前端 `keydown` 监听处理。
 
-**结果同步**
-- 翻译结果写入 Vuex 并触发通知，词典结果同步到 `dictResult`：[translate-controller.ts](src/main/translate-controller.ts#L489-L517)
-- 多引擎缓存结果写入 `resultBuffer`：[compound.ts](src/common/translate/compound.ts#L17-L63)
+全局快捷键被系统或其他应用占用时，注册会失败，界面会提示用户更换组合键。
 
-**渲染层展示**
-- `BaseView` 统一读取 `sharedResult`/`dictResult`/配置并定义模式切换逻辑：[BaseView.vue](src/components/BaseView.vue#L51-L171)
-- 对照面板使用多布局展示源文本、译文、词典与对比视图：[ContrastPanel.vue](src/components/ContrastPanel.vue#L1-L257)
-- 多源对比界面使用 `DiffTextArea` 读取 `resultBuffer` 并计算差异：[DiffTextArea.vue](src/components/DiffTextArea.vue#L87-L135)
-- 词典界面由 `DictResult` 渲染：[DictResult.vue](src/components/DictResult.vue#L1-L46)
-- 专注模式视图在 `Focus` 中处理译文与多源/词典展示：[Focus.vue](src/components/Focus.vue#L1-L138)
+## 7. 本地化
 
-## 8. 本地化资源生成与加载
+内置语言包在 [locales.ts](../src/common/locales.ts)。当前运行时直接在前端加载中文和英文语言映射，并根据 `localeSetting` 切换：
 
-**资源定义与生成**
-- 源码语言包在 `locales.ts` 中维护为 `Map`：[locales.ts](src/common/locales.ts#L1-L369)
-- 使用技巧轮播内容来自 `locales.ts` 的 `<tip>` 与提示类键，并由 [Tips.vue](src/components/Tips.vue#L1-L71) 组装
-- `prebuild.ts` 将语言包生成 `dist_locales`，并补齐缺失键：[prebuild.ts](src/prebuild.ts#L1-L44)
-- 构建脚本在 `prebuild` 中执行：`tsc` + `node`：[package.json](package.json#L15-L22)
+- `auto`：跟随浏览器/系统语言。
+- `zh-CN` / `zh-TW`：中文界面。
+- `en`：英文界面。
 
-**运行时加载**
-- `L10N` 在主进程加载系统与用户目录语言包并安装到 Vuex：[l10n.ts](src/main/l10n.ts#L23-L81)
-- 语言包目录由运行环境决定：开发态 `dist_locales`，生产态 `resources/locales`，并包含用户目录：[env.ts](src/common/env.ts#L83-L116)
-- Vuex 的 `l10n` 模块保存当前语言与语言列表：[l10n.ts](src/store/plugins/l10n.ts#L1-L55)
+语言名称显示由 [locale.ts](../src/common/translate/locale.ts) 提供，避免出现 `sourceLanguage-en` 这类配置键名泄漏到界面。
 
-## 9. 扩展与修改建议
+## 8. Rust 后端职责
 
-**新增翻译器**
-- 内置翻译器：在 `translatorMap` 中注册实例：[translators.ts](src/common/translate/translators.ts#L18-L38)
-- AI 供应商：通过 `translatorProviders` 配置扩展，使用 `CustomTranslatorManager` 自动展开模型：[custom-translators.ts](src/common/translate/custom-translators.ts#L41-L100)
+[lib.rs](../src-tauri/src/lib.rs) 提供以下能力：
 
-**修改翻译触发机制**
-- 入口动作集中在 `TranslateController.handle`：[translate-controller.ts](src/main/translate-controller.ts#L111-L178)
-- 剪贴板监听在 `setWatch` 与 `checkClipboard`：[translate-controller.ts](src/main/translate-controller.ts#L276-L661)
+- 标准配置目录读写和旧配置迁移。
+- 打开配置文件或配置目录。
+- 系统剪贴板文本/图片监听。
+- 模拟复制、模拟粘贴。
+- 活动窗口名称获取，用于白名单/黑名单。
+- 百度 OCR REST 请求。
+- HTTP 代理请求转发。
+- 全局快捷键注册。
+- Linux 原生窗口透明度设置。
 
-**调整多引擎策略**
-- 引擎组定义与设置入口在 `action.ts` 与 `types.ts`：[action.ts](src/common/action.ts#L322-L454)、[types.ts](src/common/types.ts#L204-L209)
-- 翻译器切换与缓存命中处理在 `switchTranslator`：[translate-controller.ts](src/main/translate-controller.ts#L577-L613)
-
-## 10. 关键文件索引
-
-- 翻译控制器：[translate-controller.ts](src/main/translate-controller.ts)
-- 翻译器调度与缓存：[compound.ts](src/common/translate/compound.ts)
-- 翻译器注册与获取：[translators.ts](src/common/translate/translators.ts)
-- 自定义翻译器（AI 供应商）：[custom-translators.ts](src/common/translate/custom-translators.ts)
-- 词典引擎聚合：[polymer.ts](src/common/dictionary/polymer.ts)
-- 多源对比计算：[comparator.ts](src/renderer/comparator.ts)
-- 主要 UI 绑定：[BaseView.vue](src/components/BaseView.vue)
-- 界面本地化加载：[l10n.ts](src/main/l10n.ts)
+Rust 后端不承载翻译业务状态，翻译状态统一保存在前端状态层。
