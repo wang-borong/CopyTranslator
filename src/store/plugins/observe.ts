@@ -14,7 +14,12 @@ export const observePlugin = (store: any) => {
     for (const key of Object.keys(mutation.payload)) {
       const val = mutation.payload[key];
       for (const observer of observers) {
-        const resolved = observer.postSet(key as Identifier, val);
+        let resolved = false;
+        try {
+          resolved = observer.postSet(key as Identifier, val);
+        } catch (error) {
+          console.error(`Config observer failed for ${key}`, error);
+        }
         if (resolved) {
           break;
         }
@@ -26,7 +31,11 @@ export const observePlugin = (store: any) => {
 export function restoreFromConfig(observers: Observer[], config: Config) {
   for (const key of Object.keys(config)) {
     observers.forEach((observer) => {
-      observer.postSet(key as Identifier, config[key]);
+      try {
+        observer.postSet(key as Identifier, config[key]);
+      } catch (error) {
+        console.error(`Config observer failed for ${key}`, error);
+      }
     });
   }
 }

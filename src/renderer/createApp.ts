@@ -8,41 +8,46 @@ import * as directives from "vuetify/directives";
 import { aliases, mdi } from "vuetify/iconsets/mdi";
 import "@mdi/font/css/materialdesignicons.css";
 import "vuetify/styles";
-import { ColorMode } from "../common/types";
+import { ColorMode, colorModes } from "../common/types";
 
 type VuetifyInstance = ReturnType<typeof createVuetify>;
 
 let vuetifyInstance: VuetifyInstance | undefined;
 
 export function isDarkMode() {
-  const colorMode: ColorMode = getConfigByKey("colorMode");
+  const colorMode = normalizeColorMode(getConfigByKey("colorMode"));
   switch (colorMode) {
     case "light":
       return false;
     case "dark":
       return true;
     case "auto":
-      if (window.matchMedia("(prefers-color-scheme:dark)").matches) {
-        return true;
-      } else {
-        return false;
-      }
+      return window.matchMedia("(prefers-color-scheme:dark)").matches;
   }
 }
 
+function normalizeColorMode(value: unknown): ColorMode {
+  return colorModes.includes(value as ColorMode) ? (value as ColorMode) : "auto";
+}
+
 function getVuetifyThemeName() {
-  const colorMode: ColorMode = getConfigByKey("colorMode");
-  return colorMode === "auto" ? "system" : colorMode;
+  const colorMode = normalizeColorMode(getConfigByKey("colorMode"));
+  if (colorMode === "auto") {
+    return isDarkMode() ? "dark" : "light";
+  }
+  return colorMode;
 }
 
 function getThemes() {
   return {
     light: {
+      dark: false,
       colors: {
         primary: getConfigByKey("primaryColor")?.light || "#1976D2",
       },
     },
     dark: {
+      dark: true,
       colors: {
         primary: getConfigByKey("primaryColor")?.dark || "#2196F3",
       },
@@ -57,19 +62,23 @@ export function applyThemeFromConfig() {
   }
   const themes = getThemes();
   const currentThemes = theme.themes.value;
+  const currentLight = currentThemes.light || themes.light;
+  const currentDark = currentThemes.dark || themes.dark;
   theme.themes.value = {
     ...currentThemes,
     light: {
-      ...currentThemes.light,
+      ...currentLight,
+      dark: false,
       colors: {
-        ...currentThemes.light.colors,
+        ...currentLight.colors,
         primary: themes.light.colors.primary,
       },
     },
     dark: {
-      ...currentThemes.dark,
+      ...currentDark,
+      dark: true,
       colors: {
-        ...currentThemes.dark.colors,
+        ...currentDark.colors,
         primary: themes.dark.colors.primary,
       },
     },

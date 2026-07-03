@@ -111,7 +111,12 @@ class StoreWrapper {
     for (const key of Object.keys(configPatch)) {
       const value = configPatch[key];
       for (const observer of observers) {
-        const resolved = observer.postSet(key as any, value);
+        let resolved = false;
+        try {
+          resolved = observer.postSet(key as any, value);
+        } catch (error) {
+          console.error(`Config observer failed for ${key}`, error);
+        }
         if (resolved) {
           break;
         }

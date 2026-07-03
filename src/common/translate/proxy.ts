@@ -1,14 +1,15 @@
 import axios_, { AxiosRequestConfig } from "axios";
 import { invoke } from "@tauri-apps/api/core";
 
-export const getProxyAxios = (info?: boolean, googleMirror?: string) => {
+export const getProxyAxios = (_info?: boolean) => {
   const axiosOptions: AxiosRequestConfig = {
     timeout: 10000,
     adapter: async (config: AxiosRequestConfig) => {
       const headers: Record<string, string> = {};
-      if (config.headers) {
-        Object.keys(config.headers).forEach((key) => {
-          const val = config.headers[key];
+      const rawHeaders = config.headers as Record<string, unknown> | undefined;
+      if (rawHeaders) {
+        Object.keys(rawHeaders).forEach((key) => {
+          const val = rawHeaders[key];
           if (val !== undefined && val !== null) {
             headers[key] = String(val);
           }

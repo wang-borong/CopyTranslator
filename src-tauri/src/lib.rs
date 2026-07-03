@@ -596,6 +596,28 @@ fn start_clipboard_monitor(app_handle: AppHandle) {
     });
 }
 
+fn apply_main_window_icon(app: &tauri::App) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let Some(icon) = app.default_window_icon().cloned() else {
+        return;
+    };
+
+    if let Err(error) = window.set_icon(icon) {
+        eprintln!("Failed to set main window icon: {}", error);
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use gtk::prelude::GtkWindowExt;
+
+        if let Ok(gtk_window) = window.gtk_window() {
+            gtk_window.set_icon_name(Some("copytranslator"));
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -603,6 +625,7 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.handle().clone();
             start_clipboard_monitor(app_handle);
+            apply_main_window_icon(app);
 
             // Tray setup
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

@@ -1,5 +1,10 @@
-import { Translator, Language, TranslateResult } from "./types";
-import { Google } from "@opentranslate/google";
+import {
+  BaseTranslator,
+  Language,
+  TranslateQueryResult,
+  TranslateResult,
+  Translator,
+} from "./types";
 import { Simply } from "./simply";
 import { Lingva, defaultLingvaConfig } from "./lingva";
 import { getProxyAxios } from "./proxy";
@@ -10,11 +15,194 @@ export interface GoogleWrapperConfig {
   source: "google" | "simply" | "lingva"; // 使用哪个后端
 }
 
+const googleLangMap: [Language, string][] = [
+  ["auto", "auto"],
+  ["af", "af"],
+  ["sq", "sq"],
+  ["am", "am"],
+  ["ar", "ar"],
+  ["hy", "hy"],
+  ["az", "az"],
+  ["eu", "eu"],
+  ["be", "be"],
+  ["bn", "bn"],
+  ["bs", "bs"],
+  ["bg", "bg"],
+  ["ca", "ca"],
+  ["ceb", "ceb"],
+  ["ny", "ny"],
+  ["zh-CN", "zh-CN"],
+  ["zh-TW", "zh-TW"],
+  ["co", "co"],
+  ["hr", "hr"],
+  ["cs", "cs"],
+  ["da", "da"],
+  ["nl", "nl"],
+  ["en", "en"],
+  ["eo", "eo"],
+  ["et", "et"],
+  ["fi", "fi"],
+  ["fr", "fr"],
+  ["fy", "fy"],
+  ["gl", "gl"],
+  ["ka", "ka"],
+  ["de", "de"],
+  ["el", "el"],
+  ["gu", "gu"],
+  ["ht", "ht"],
+  ["ha", "ha"],
+  ["haw", "haw"],
+  ["hi", "hi"],
+  ["hmn", "hmn"],
+  ["hu", "hu"],
+  ["is", "is"],
+  ["ig", "ig"],
+  ["id", "id"],
+  ["ga", "ga"],
+  ["it", "it"],
+  ["ja", "ja"],
+  ["jw", "jw"],
+  ["kn", "kn"],
+  ["kk", "kk"],
+  ["km", "km"],
+  ["ko", "ko"],
+  ["ku", "ku"],
+  ["ky", "ky"],
+  ["lo", "lo"],
+  ["la", "la"],
+  ["lv", "lv"],
+  ["lt", "lt"],
+  ["lb", "lb"],
+  ["mk", "mk"],
+  ["mg", "mg"],
+  ["ms", "ms"],
+  ["ml", "ml"],
+  ["mt", "mt"],
+  ["mi", "mi"],
+  ["mr", "mr"],
+  ["mn", "mn"],
+  ["my", "my"],
+  ["ne", "ne"],
+  ["no", "no"],
+  ["ps", "ps"],
+  ["fa", "fa"],
+  ["pl", "pl"],
+  ["pt", "pt"],
+  ["pa", "pa"],
+  ["ro", "ro"],
+  ["ru", "ru"],
+  ["sm", "sm"],
+  ["gd", "gd"],
+  ["sr", "sr"],
+  ["st", "st"],
+  ["sn", "sn"],
+  ["sd", "sd"],
+  ["si", "si"],
+  ["sk", "sk"],
+  ["sl", "sl"],
+  ["so", "so"],
+  ["es", "es"],
+  ["su", "su"],
+  ["sw", "sw"],
+  ["sv", "sv"],
+  ["tg", "tg"],
+  ["ta", "ta"],
+  ["te", "te"],
+  ["th", "th"],
+  ["tr", "tr"],
+  ["uk", "uk"],
+  ["ur", "ur"],
+  ["ug", "ug"],
+  ["uz", "uz"],
+  ["vi", "vi"],
+  ["cy", "cy"],
+  ["xh", "xh"],
+  ["yi", "yi"],
+  ["yo", "yo"],
+  ["zu", "zu"],
+];
+
+type GoogleApiResponse = [
+  Array<[string | null, string | null, unknown?, unknown?, unknown?]>?,
+  unknown?,
+  string?
+];
+
+interface GoogleOfficialConfig {
+  mirror?: string;
+}
+
+class GoogleOfficial extends BaseTranslator<GoogleOfficialConfig> {
+  readonly name = "google";
+  private static readonly langMap = new Map(googleLangMap);
+  private static readonly langMapReverse = new Map(
+    googleLangMap.map(([translatorLang, lang]) => [lang, translatorLang])
+  );
+
+  private buildBaseUrl(config: GoogleOfficialConfig): string {
+    const mirror = (config.mirror || "").trim().replace(/\/+$/, "");
+    return mirror || "https://translate.googleapis.com";
+  }
+
+  protected async query(
+    text: string,
+    from: Language,
+    to: Language,
+    config: GoogleOfficialConfig
+  ): Promise<TranslateQueryResult> {
+    const source = GoogleOfficial.langMap.get(from) || from;
+    const target = GoogleOfficial.langMap.get(to) || to;
+    const url =
+      `${this.buildBaseUrl(config)}/translate_a/single` +
+      `?client=gtx&dt=t&sl=${encodeURIComponent(source)}` +
+      `&tl=${encodeURIComponent(target)}&q=${encodeURIComponent(text)}`;
+    const response = await this.axios.get<GoogleApiResponse>(url);
+    const sentences = response.data?.[0] || [];
+    const transText = sentences
+      .map((sentence) => sentence?.[0] || "")
+      .join("");
+
+    if (!transText) {
+      throw new Error("Invalid Google translate response");
+    }
+
+    const detected = response.data?.[2];
+    return {
+      text,
+      from:
+        (detected
+          ? GoogleOfficial.langMapReverse.get(detected) || from
+          : from) || "auto",
+      to,
+      origin: {
+        paragraphs: text.split(/\n+/),
+        tts: "",
+      },
+      trans: {
+        paragraphs: transText.split(/(\n ?)+/),
+        tts: "",
+      },
+    };
+  }
+
+  getSupportLanguages(): Language[] {
+    return [...GoogleOfficial.langMap.keys()];
+  }
+
+  async detect(text: string): Promise<Language> {
+    try {
+      return (await this.translate(text, "auto", "en")).from;
+    } catch (error) {
+      return "auto";
+    }
+  }
+}
+
 export class GoogleWrapper implements Translator {
   readonly name = "Google";
   config: GoogleWrapperConfig;
   private axios: any;
-  private googleTranslator: Google | null = null;
+  private googleTranslator: GoogleOfficial | null = null;
   private simplyTranslator: Simply | null = null;
   private lingvaTranslator: Lingva | null = null;
 
@@ -28,7 +216,7 @@ export class GoogleWrapper implements Translator {
     // 初始化各个翻译器实例（延迟初始化，按需使用）
   }
 
-  private getGoogleTranslator(): Google {
+  private getGoogleTranslator(): GoogleOfficial {
     if (!this.googleTranslator) {
       let mirror = this.config.mirror;
       if (mirror != undefined) {
@@ -39,12 +227,10 @@ export class GoogleWrapper implements Translator {
           mirror = undefined;
         }
       }
-      this.googleTranslator = new Google({
-        axios: getProxyAxios(true, mirror) as any,
+      this.googleTranslator = new GoogleOfficial({
+        axios: getProxyAxios(true) as any,
+        config: { mirror },
       });
-      // 强制使用 API (gtx) 模式，跳过 translate.google.cn/com 的 token 获取和 webapp 接口
-      // 解决因 google.cn 无法访问和 google.com 响应慢导致的 20s+ 延迟
-      this.googleTranslator.config.order = ["api"];
     }
     return this.googleTranslator;
   }

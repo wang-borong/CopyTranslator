@@ -5,3 +5,4 @@ declare module "lodash.sum";
 declare module "lodash.trim";
 declare module "lodash.trimend";
 declare module "lodash.trimstart";
+declare module "*.css";
