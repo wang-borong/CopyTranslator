@@ -1,8 +1,8 @@
 <template>
   <div class="settings-root">
     <v-app class="settings-app" :style="appStyle">
-      <v-app-bar color="primary" dense :height="titlebarHeight">
-        <v-spacer style="height: 100%;">
+      <v-app-bar color="primary" density="compact" :height="titlebarHeight">
+        <v-spacer class="settings-drag-spacer">
           <div class="dragableDiv" data-tauri-drag-region></div>
         </v-spacer>
         <ActionButton
@@ -225,6 +225,9 @@ onMounted(() => {
 .dragableDiv {
   height: 100%;
   width: 100%;
+}
+.settings-drag-spacer {
+  height: 100%;
 }
 .setting {
   height: calc(100% - 5px);

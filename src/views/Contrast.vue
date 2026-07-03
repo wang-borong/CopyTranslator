@@ -8,7 +8,7 @@
         app
         :color="barColor"
         dark
-        dense
+        density="compact"
         :height="base.titlebarHeight.value"
         :flat="base.config.value.penerate"
         :class="{
@@ -30,7 +30,7 @@
           </span>
         </div>
         <v-spacer
-          style="height: calc(100% - 1px); padding-top: 1px;"
+          class="titlebar-drag-spacer"
           @mouseover="penerate(true)"
           @mouseleave="penerate(false)"
         >
@@ -42,7 +42,7 @@
         <v-menu location="top">
           <template v-slot:activator="{ props }">
             <div
-              style="display: flex;"
+              class="engine-menu-activator"
               v-bind="props"
               @contextmenu.prevent="base.callback('listenClipboard')"
             >
@@ -50,7 +50,7 @@
                 dot
                 :color="badgeColor"
                 location="bottom right"
-                style="margin: auto;"
+                class="current-engine-badge"
               >
                 <EngineButton
                   :engine="base.currentEngine.value"
@@ -62,11 +62,11 @@
             </div>
           </template>
           <v-card :style="popupStyle" class="popup">
-            <v-row style="margin: 0px;">
+            <v-row class="engine-popup-row">
               <v-col
                 v-for="(engineGroup, groupIndex) in restEngineGroups"
                 :key="groupIndex"
-                style="padding: 0px;"
+                class="engine-popup-col"
               >
                 <div
                   v-for="engine in engineGroup"
@@ -79,16 +79,15 @@
             </v-row>
           </v-card>
         </v-menu>
-        <div class="d-flex flex-row" style="height: 100%; padding-right: 1px;">
+        <div class="titlebar-actions">
           <div
             v-if="base.config.value.penerate"
-            class="dragableDiv"
-            style="display: flex;"
+            class="dragableDiv titlebar-move-region"
             data-tauri-drag-region
           >
             <ActionButton
               icon="mdi-cursor-move"
-              style="margin: auto;"
+              class="titlebar-centered-action"
             ></ActionButton>
           </div>
           <ActionButton
@@ -424,6 +423,11 @@ onUnmounted(() => {
   border-radius: var(--border-radius) !important;
 }
 
+.titlebar-drag-spacer {
+  height: calc(100% - 1px);
+  padding-top: 1px;
+}
+
 .titlebar-meta {
   align-items: center;
   display: flex;
@@ -462,6 +466,32 @@ onUnmounted(() => {
   height: 7px;
   margin-right: 6px;
   width: 7px;
+}
+
+.engine-menu-activator,
+.titlebar-actions,
+.titlebar-move-region {
+  align-items: center;
+  display: flex;
+  height: 100%;
+}
+
+.current-engine-badge,
+.titlebar-centered-action {
+  margin: auto;
+}
+
+.engine-popup-row {
+  margin: 0;
+}
+
+.engine-popup-col {
+  padding: 0;
+}
+
+.titlebar-actions {
+  flex-direction: row;
+  padding-right: 1px;
 }
 
 .window-container .rounded-top-bar {

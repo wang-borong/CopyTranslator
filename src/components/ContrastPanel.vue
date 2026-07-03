@@ -6,8 +6,7 @@
     ></Focus>
     <div
       v-else-if="layoutType === 'horizontal'"
-      class="maxNoPad"
-      style="margin: 0px; display: flex;"
+      class="maxNoPad horizontal-layout"
     >
       <div
         class="areaWarpper panel-section"
@@ -38,8 +37,7 @@
       </div>
       <div
         id="hDrag"
-        class="resizer"
-        style="width: 4px; cursor: col-resize;"
+        class="resizer h-resizer"
         @mousedown="mousedown"
       ></div>
       <div
@@ -94,8 +92,7 @@
       </div>
       <div
         id="vDrag"
-        class="resizer"
-        style="height: 4px; cursor: row-resize;"
+        class="resizer v-resizer"
         @mousedown="vMousedown"
       ></div>
       <div
@@ -336,7 +333,10 @@ const resultTitle = computed(() => {
   if (multiSource.value) {
     return trans.value["multiSource"] || "Multi-source";
   }
-  return TranslatorNameResolver.getDisplayName(base.currentEngine.value, trans.value);
+  return TranslatorNameResolver.getDisplayName(
+    base.currentEngine.value,
+    trans.value
+  );
 });
 </script>
 
@@ -380,6 +380,11 @@ const resultTitle = computed(() => {
   width: 100%;
   padding: 0px;
   overflow: hidden;
+}
+
+.horizontal-layout {
+  display: flex;
+  margin: 0;
 }
 
 .areaWarpper {
@@ -427,6 +432,16 @@ const resultTitle = computed(() => {
   background-color: var(--ct-resizer, rgba(142, 36, 170, 0.32));
   position: relative;
   transition: background-color 0.12s ease;
+}
+
+.h-resizer {
+  cursor: col-resize;
+  width: 4px;
+}
+
+.v-resizer {
+  cursor: row-resize;
+  height: 4px;
 }
 .resizer:hover {
   background-color: var(--ct-resizer-hover, rgba(142, 36, 170, 0.72));

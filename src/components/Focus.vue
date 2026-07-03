@@ -16,8 +16,7 @@
     >
       <div
         v-if="(mode === 'normal'|| mode==='none')"
-        class="focusPadding"
-        style="height: 100%;"
+        class="focusPadding focus-normal"
         v-bind:style="focusStyle"
         @contextmenu.prevent="base.openMenu('focusContext')"
       >
@@ -149,6 +148,9 @@ const getModifiedText = () => {
 .focus-body {
   flex: 1 1 auto;
   min-height: 0;
+}
+.focus-normal {
+  height: 100%;
 }
 .focusText {
   resize: none;

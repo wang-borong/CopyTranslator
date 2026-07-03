@@ -1,5 +1,5 @@
 <template>
-  <div style="text-align: center; width: 100%;">
+  <div class="simple-button-wrap">
     <v-btn v-bind="$attrs" class="defaultBtn">
       <slot />
     </v-btn>
@@ -14,5 +14,9 @@
 .defaultBtn {
   width: calc(100% - 10px);
   margin-top: 4px;
+}
+.simple-button-wrap {
+  text-align: center;
+  width: 100%;
 }
 </style>

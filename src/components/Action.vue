@@ -76,12 +76,11 @@
               v-model="color"
               flat
               show-swatches
-              style="margin: 10px auto;"
+              class="action-color-picker"
             ></v-color-picker>
           </v-dialog>
           <p
             v-else-if="action.actionType === 'prompt'"
-            style="text-align: left; font-weight: bold;"
             class="pStyle"
           >
             {{ trans[action.id] }}
@@ -297,6 +296,10 @@ const actionLayoutClass = computed(() => {
 .pStyle {
   margin-bottom: 4px;
   text-align: left;
+  font-weight: 700;
+}
+.action-color-picker {
+  margin: 10px auto;
 }
 
 @media (max-width: 560px) {

@@ -10,7 +10,7 @@
           v-for="(val, key) in (sentences as string[])"
           :key="key"
           @mouseover="mouseOver(key)"
-          style="display: block;"
+          class="co-line"
         >
           {{ val }}
         </span>
@@ -21,7 +21,7 @@
           :key="key"
           @mouseover="mouseOver(key)"
         >
-          <span style="display: block; padding-bottom: 5px;">
+          <span class="co-line co-line-spaced">
             {{ val }}
           </span>
         </div>
@@ -73,6 +73,13 @@ const mouseOver = (idx: number) => {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+.co-line {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.co-line-spaced {
+  padding-bottom: 5px;
 }
 .engine-notice {
   flex: 0 0 auto;

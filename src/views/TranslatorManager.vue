@@ -1,23 +1,32 @@
 <template>
-  <div style="height: 100%; display: flex; flex-direction: column;">
-    <v-tabs v-model="activeTab" class="flex-grow-0">
-      <v-tab :value="0">{{ trans["translatorList"] || "翻译器列表" }}</v-tab>
-      <v-tab :value="1">{{ trans["translatorGroups"] || "分组设置" }}</v-tab>
+  <div class="translator-manager">
+    <v-tabs v-model="activeTab" class="translator-tabs" density="compact">
+      <v-tab :value="0">
+        <v-icon size="18" class="mr-2">mdi-format-list-checks</v-icon>
+        {{ trans["translatorList"] || "翻译器列表" }}
+      </v-tab>
+      <v-tab :value="1">
+        <v-icon size="18" class="mr-2">mdi-playlist-edit</v-icon>
+        {{ trans["translatorGroups"] || "分组设置" }}
+      </v-tab>
     </v-tabs>
 
-    <div style="flex: 1; overflow: hidden; position: relative;">
-      <v-tabs-window v-model="activeTab" style="height: 100%; overflow: auto;">
-        <v-tabs-window-item :value="0" style="min-height: 100%;">
-          <div class="pa-3">
-            <div class="caption grey--text mb-3">
-              {{ trans["enabledCount"] || "已启用" }}:
-              {{ enabledTranslators.length }}
-              ·
-              {{ trans["cachedCount"] || "已缓存" }}:
-              {{ cacheTranslators.length }}
+    <div class="translator-content">
+      <v-tabs-window v-model="activeTab" class="translator-window">
+        <v-tabs-window-item :value="0" class="translator-window-item">
+          <div class="translator-pane">
+            <div class="translator-summary">
+              <v-chip size="small" color="primary" variant="tonal">
+                {{ trans["enabledCount"] || "已启用" }}:
+                {{ enabledTranslators.length }}
+              </v-chip>
+              <v-chip size="small" color="secondary" variant="tonal">
+                {{ trans["cachedCount"] || "已缓存" }}:
+                {{ cacheTranslators.length }}
+              </v-chip>
             </div>
-            <v-alert dense text type="info" class="mb-4">
-              <div class="caption" style="white-space: pre-line;">
+            <v-alert density="compact" variant="tonal" type="info" class="mb-4">
+              <div class="translator-tip-text">
                 {{
                   trans["translatorManagerTips"] ||
                   "提示：\n1) 先在配置中填写密钥，未配置的翻译器无法启用。\n2) 批量启用只会启用已完成配置 of 翻译器。\n3) 缓存会加快切换引擎速度，但会占用更多资源。"
@@ -95,29 +104,28 @@
                   </template>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <v-card
-                    flat
-                    class="pa-3"
-                    style="background: #fafafa; border-radius: 4px;"
-                  >
+                  <div class="translator-config-panel">
                     <KeyConfig :identifier="translator.id"></KeyConfig>
-                  </v-card>
+                  </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
 
             <!-- 后备翻译器设置 -->
-            <v-card flat class="mt-4">
-              <v-card-title class="subtitle-2 py-2">
+            <section class="fallback-panel">
+              <div class="fallback-title">
+                <v-icon size="18" color="primary">mdi-backup-restore</v-icon>
                 {{ trans["fallbackTranslator"] || "后备翻译器" }}
-              </v-card-title>
-              <v-card-text class="pt-0 pb-2">
+              </div>
+              <div class="fallback-body">
                 <v-select
                   v-model="fallbackTranslator"
-                  :items="enabledTranslators"
+                  :items="fallbackTranslatorItems"
+                  item-title="label"
+                  item-value="value"
                   :label="trans['selectFallbackTranslator'] || '选择后备翻译器'"
-                  outlined
-                  dense
+                  variant="outlined"
+                  density="compact"
                   :hint="
                     trans['<tooltip>fallbackTranslator'] ||
                     '当前翻译器不支持目标语言时自动使用'
@@ -126,7 +134,7 @@
                   class="caption"
                   :disabled="enabledTranslators.length === 0"
                 ></v-select>
-                <div class="caption grey--text mt-2">
+                <div class="fallback-tip">
                   {{
                     trans["fallbackTranslatorTip"] ||
                     "建议选择稳定且已配置完成的翻译器作为后备。"
@@ -134,17 +142,17 @@
                 </div>
                 <div
                   v-if="enabledTranslators.length === 0"
-                  class="caption error--text mt-1"
+                  class="fallback-error"
                 >
                   {{ trans["noEnabledTranslators"] || "请先在上方启用翻译器" }}
                 </div>
-              </v-card-text>
-            </v-card>
+              </div>
+            </section>
           </div>
         </v-tabs-window-item>
 
-        <v-tabs-window-item :value="1" style="min-height: 100%;">
-          <div class="pa-3">
+        <v-tabs-window-item :value="1" class="translator-window-item">
+          <div class="translator-pane">
             <TranslatorGroupConfig
               configKey="translator-cache"
               :title="trans['cacheGroup'] || '缓存分组'"
@@ -154,8 +162,6 @@
               "
             ></TranslatorGroupConfig>
 
-            <v-divider class="my-4"></v-divider>
-
             <TranslatorGroupConfig
               configKey="translator-compare"
               :title="trans['compareGroup'] || '对比分组'"
@@ -164,8 +170,6 @@
                 '配置多源对比模式下使用的翻译器及其顺序'
               "
             ></TranslatorGroupConfig>
-
-            <v-divider class="my-4"></v-divider>
 
             <TranslatorGroupConfig
               configKey="translator-double"
@@ -226,6 +230,13 @@ const fallbackTranslator = computed({
     base.callback("fallbackTranslator", val);
   }
 });
+
+const fallbackTranslatorItems = computed(() =>
+  enabledTranslators.value.map((id: string) => ({
+    label: TranslatorNameResolver.getDisplayName(id, trans.value),
+    value: id,
+  }))
+);
 
 const buildTranslatorList = () => {
   translatorList.value = availableTranslators.value.map((id) => {
@@ -331,6 +342,46 @@ const applyCacheTranslators = (newCache: string[]) => {
 </script>
 
 <style scoped>
+.translator-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.translator-tabs {
+  flex: 0 0 auto;
+}
+.translator-tabs :deep(.v-tab) {
+  border-radius: 6px;
+  min-height: 38px;
+}
+.translator-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.translator-window {
+  height: 100%;
+  overflow: auto;
+}
+.translator-window-item {
+  min-height: 100%;
+}
+.translator-pane {
+  padding: 12px 4px 12px 0;
+}
+.translator-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.translator-tip-text {
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-line;
+}
 .translator-row {
   display: grid;
   grid-template-columns: 60px minmax(150px, 1fr) 60px;
@@ -348,21 +399,22 @@ const applyCacheTranslators = (newCache: string[]) => {
   width: 100%;
   font-size: 13px;
   font-weight: 500;
-  color: #757575;
+  color: rgba(var(--v-theme-on-surface), 0.68);
   padding: 8px 24px 8px 24px;
-  background: #f5f5f5;
-  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.045);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px;
   margin-bottom: 8px;
 }
 
 .translator-panels {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .translator-panel {
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.09);
 }
 
 .translator-panel:last-child {
@@ -376,7 +428,7 @@ const applyCacheTranslators = (newCache: string[]) => {
 }
 
 .translator-panel-header:hover {
-  background-color: #f9f9f9;
+  background: rgba(var(--v-theme-on-surface), 0.045);
 }
 
 .translator-header-cell {
@@ -410,17 +462,56 @@ const applyCacheTranslators = (newCache: string[]) => {
   white-space: nowrap;
   font-size: 14px;
   font-weight: 500;
-  color: #424242;
+  color: rgba(var(--v-theme-on-surface), 0.86);
   cursor: help;
   padding: 4px 0;
 }
 
 .translator-name:hover {
-  color: #1976d2;
+  color: rgb(var(--v-theme-primary));
 }
 
 .translator-checkbox {
   margin: 0 !important;
   padding: 0 !important;
+}
+.translator-config-panel {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  border-radius: 8px;
+  padding: 12px;
+}
+.fallback-panel {
+  background: rgba(var(--v-theme-surface), 0.72);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.fallback-title {
+  align-items: center;
+  background: rgba(var(--v-theme-on-surface), 0.035);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  display: flex;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 8px;
+  line-height: 20px;
+  padding: 10px 12px;
+}
+.fallback-body {
+  padding: 12px;
+}
+.fallback-tip {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 8px;
+}
+.fallback-error {
+  color: rgb(var(--v-theme-error));
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 4px;
 }
 </style>

@@ -1,14 +1,15 @@
 <template>
-  <div>
-    <div class="d-flex justify-end mb-2" v-if="topSave">
+  <div class="keyconfig">
+    <div class="keyconfig-toolbar" v-if="topSave">
       <v-btn size="small" color="primary" @click="save()" :disabled="!isDirty">
+        <v-icon size="16" class="mr-1">mdi-content-save</v-icon>
         {{ trans["saveConfig"] || "保存配置" }}
       </v-btn>
     </div>
     <v-alert
       v-if="noticeText || docUrl"
-      dense
-      text
+      density="compact"
+      variant="tonal"
       type="info"
       :icon="false"
       class="mb-2"
@@ -29,7 +30,7 @@
         v-if="getUiType(key) === 'checkbox'"
         v-model="keyConfigLocal[key]"
         :label="getLabel(key)"
-        dense
+        density="compact"
         hide-details
         class="keyconfig-field"
       ></v-checkbox>
@@ -39,19 +40,31 @@
         v-model="keyConfigLocal[key]"
         :items="getSelectOptions(key)"
         :label="getLabel(key)"
-        dense
-        outlined
+        density="compact"
+        variant="outlined"
         hide-details
         class="keyconfig-field"
       ></v-select>
+
+      <v-textarea
+        v-else-if="getUiType(key) === 'textarea'"
+        v-model="keyConfigLocal[key]"
+        :label="getLabel(key)"
+        rows="3"
+        auto-grow
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="keyconfig-field"
+      ></v-textarea>
 
       <v-text-field
         v-else-if="getUiType(key) === 'number'"
         v-model.number="keyConfigLocal[key]"
         type="number"
         :label="getLabel(key)"
-        dense
-        outlined
+        density="compact"
+        variant="outlined"
         hide-details
         class="keyconfig-field"
       ></v-text-field>
@@ -61,8 +74,8 @@
         v-model="keyConfigLocal[key]"
         :type="getInputType(key)"
         :label="getLabel(key)"
-        dense
-        outlined
+        density="compact"
+        variant="outlined"
         hide-details
         class="keyconfig-field"
       ></v-text-field>
@@ -75,12 +88,13 @@
       @click="save()"
       :disabled="!isDirty"
     >
+      <v-icon size="16" class="mr-1">mdi-content-save</v-icon>
       {{ trans["saveConfig"] || "保存配置" }}
     </v-btn>
     <v-alert
       v-if="saveMessage"
-      dense
-      text
+      density="compact"
+      variant="tonal"
       class="mt-2 mb-0"
       :type="saveMessageType"
     >
@@ -251,6 +265,15 @@ const save = () => {
 </script>
 
 <style scoped>
+.keyconfig {
+  text-align: left;
+}
+.keyconfig-toolbar {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
 .keyconfig-item {
   margin-top: 10px;
 }

@@ -1,34 +1,49 @@
 <template>
-  <div>
+  <div class="bw-config">
     <Action :identifier="tipName"></Action>
     <Action :identifier="optionName"></Action>
-    <br />
     <Action :identifier="modeName"></Action>
-    <p v-if="config[modeName] !== globalName" style="color: red;">
+    <v-alert
+      v-if="config[modeName] !== globalName"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="bw-alert"
+    >
       {{ trans[promptName] }}
-    </p>
-    <div v-if="config[modeName] === whitelistName">
-      <p>{{ trans[whitelistName] }}:</p>
+    </v-alert>
+    <section v-if="config[modeName] === whitelistName" class="bw-panel">
+      <div class="bw-title">{{ trans[whitelistName] }}:</div>
       <v-select
         v-model="whitelist"
         :items="config.activeWindows || []"
-        style="margin: 0px; padding: 0px;"
+        density="compact"
+        variant="outlined"
+        hide-details
         multiple
         chips
       >
       </v-select>
-    </div>
-    <div v-if="config[modeName] === blacklistName">
-      <p>{{ trans[blacklistName] }}:</p>
+      <div v-if="(config.activeWindows || []).length === 0" class="bw-empty">
+        {{ trans["noActiveWindows"] || "暂无可选择窗口" }}
+      </div>
+    </section>
+    <section v-if="config[modeName] === blacklistName" class="bw-panel">
+      <div class="bw-title">{{ trans[blacklistName] }}:</div>
       <v-select
         v-model="blacklist"
         :items="config.activeWindows || []"
-        style="margin: 0px; padding: 0px;"
+        density="compact"
+        variant="outlined"
+        hide-details
         multiple
         chips
       >
       </v-select>
-    </div>
+      <div v-if="(config.activeWindows || []).length === 0" class="bw-empty">
+        {{ trans["noActiveWindows"] || "暂无可选择窗口" }}
+      </div>
+    </section>
   </div>
 </template>
 
@@ -67,4 +82,36 @@ const blacklist = computed({
 });
 </script>
 
-<style scoped></style>
+<style scoped>
+.bw-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  overflow: auto;
+  padding-right: 4px;
+  text-align: left;
+}
+.bw-alert {
+  margin: 2px 0;
+}
+.bw-panel {
+  background: rgba(var(--v-theme-surface), 0.72);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  padding: 12px;
+}
+.bw-title {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  margin-bottom: 8px;
+}
+.bw-empty {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 8px;
+}
+</style>

@@ -1,5 +1,5 @@
 <template>
-  <v-card style="height: 100%; width: 100%;">
+  <v-card class="tips-card">
     <v-carousel
       v-model="tipIndex"
       height="300px"
@@ -7,9 +7,9 @@
       :interval="10000"
     >
       <v-carousel-item v-for="(tip, i) in tips" :key="i">
-        <v-sheet height="100%" tile>
-          <div class="flex">
-            <p style="margin: auto; text-align: center;">{{ tip }}</p>
+        <v-sheet height="100%" tile class="tips-sheet">
+          <div class="tips-content">
+            <p>{{ tip }}</p>
           </div>
         </v-sheet>
       </v-carousel-item>
@@ -81,15 +81,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.flex {
-  display: flex;
-  /*实现垂直居中*/
-  align-items: center;
-  /*实现水平居中*/
-  justify-content: center;
-  text-align: justify;
-  margin-left: 60px;
-  margin-right: 60px;
+.tips-card {
   height: 100%;
+  width: 100%;
+}
+.tips-sheet {
+  background: rgba(var(--v-theme-surface), 0.96);
+}
+.tips-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 28px 56px;
+  text-align: center;
+}
+.tips-content p {
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 620px;
+}
+@media (max-width: 560px) {
+  .tips-content {
+    padding: 24px 32px;
+  }
 }
 </style>

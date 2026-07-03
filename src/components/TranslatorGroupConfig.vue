@@ -1,42 +1,62 @@
 <template>
-  <v-card flat class="mb-4 transparent">
-    <v-card-title class="subtitle-2 py-2 px-0 d-flex align-center">
-      {{ title }}
-      <v-spacer></v-spacer>
-      <v-btn icon size="small" @click="showAddDialog = true" color="primary">
-        <v-icon>mdi-plus</v-icon>
-      </v-btn>
-    </v-card-title>
-
-    <div class="caption grey--text mb-2" v-if="description">
-      {{ description }}
-    </div>
-
-    <v-card flat outlined>
+  <section class="translator-group-config">
+    <div class="group-header">
       <div>
-        <div v-for="(id, index) in localList" :key="id" class="group-item">
-          <div class="group-item-name">{{ getTranslatorName(id) }}</div>
-          <v-spacer></v-spacer>
-          <div style="display: flex; gap: 5px; align-items: center;">
-            <v-btn size="x-small" icon variant="plain" :disabled="index === 0" @click="moveUp(index)">
-              <v-icon size="small">mdi-arrow-up</v-icon>
-            </v-btn>
-            <v-btn size="x-small" icon variant="plain" :disabled="index === localList.length - 1" @click="moveDown(index)">
-              <v-icon size="small">mdi-arrow-down</v-icon>
-            </v-btn>
-            <v-btn icon size="small" variant="plain" @click="removeTranslator(index)" color="grey">
-              <v-icon size="small">mdi-close</v-icon>
-            </v-btn>
-          </div>
-        </div>
-        <div
-          v-if="localList.length === 0"
-          class="caption grey--text text-center py-4"
-        >
-          {{ trans["noItems"] || "暂无项目" }}
+        <div class="group-title">{{ title }}</div>
+        <div class="group-description" v-if="description">
+          {{ description }}
         </div>
       </div>
-    </v-card>
+      <v-btn
+        icon
+        size="small"
+        @click="showAddDialog = true"
+        color="primary"
+        variant="tonal"
+      >
+        <v-icon>mdi-plus</v-icon>
+      </v-btn>
+    </div>
+
+    <div class="group-list">
+      <div v-for="(id, index) in localList" :key="id" class="group-item">
+        <div class="group-item-index">{{ index + 1 }}</div>
+        <div class="group-item-name">{{ getTranslatorName(id) }}</div>
+        <div class="group-actions">
+          <v-btn
+            size="x-small"
+            icon
+            variant="plain"
+            :disabled="index === 0"
+            @click="moveUp(index)"
+          >
+            <v-icon size="small">mdi-arrow-up</v-icon>
+          </v-btn>
+          <v-btn
+            size="x-small"
+            icon
+            variant="plain"
+            :disabled="index === localList.length - 1"
+            @click="moveDown(index)"
+          >
+            <v-icon size="small">mdi-arrow-down</v-icon>
+          </v-btn>
+          <v-btn
+            icon
+            size="x-small"
+            variant="plain"
+            @click="removeTranslator(index)"
+            color="error"
+          >
+            <v-icon size="small">mdi-close</v-icon>
+          </v-btn>
+        </div>
+      </div>
+      <div v-if="localList.length === 0" class="group-empty">
+        <v-icon size="22">mdi-playlist-remove</v-icon>
+        {{ trans["noItems"] || "暂无项目" }}
+      </div>
+    </div>
 
     <!-- Add Dialog -->
     <v-dialog v-model="showAddDialog" max-width="400" scrollable>
@@ -44,8 +64,8 @@
         <v-card-title class="subtitle-1">
           {{ trans["addTranslator"] || "添加翻译器" }}
         </v-card-title>
-        <v-card-text style="height: 300px;" class="px-0">
-          <v-list dense>
+        <v-card-text class="translator-dialog-list">
+          <v-list density="compact">
             <template v-if="remainingTranslators.length > 0">
               <v-list-item
                 v-for="id in remainingTranslators"
@@ -61,7 +81,7 @@
               </v-list-item>
             </template>
             <v-list-item v-else>
-              <v-list-item-title class="grey--text caption text-center">
+              <v-list-item-title class="group-empty-title">
                 {{ trans["noMoreTranslators"] || "没有更多可用翻译器" }}
               </v-list-item-title>
             </v-list-item>
@@ -75,7 +95,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-card>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -165,22 +185,92 @@ const updateConfig = () => {
 
 <style scoped>
 .group-item {
-  display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-  background: white;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 44px;
+  padding: 8px 10px;
   transition: background-color 0.2s;
 }
 .group-item:hover {
-  background-color: #f9f9f9;
+  background: rgba(var(--v-theme-on-surface), 0.045);
 }
-.group-item:last-child {
-  border-bottom: none;
+.group-item + .group-item {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+}
+.translator-group-config {
+  background: rgba(var(--v-theme-surface), 0.72);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.group-header {
+  align-items: center;
+  background: rgba(var(--v-theme-on-surface), 0.035);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+.group-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+.group-description {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 12px;
+  line-height: 18px;
+}
+.group-list {
+  min-height: 46px;
+}
+.group-item-index {
+  align-items: center;
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-radius: 999px;
+  color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
 }
 .group-item-name {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-actions {
+  align-items: center;
+  display: flex;
+  gap: 2px;
+}
+.group-empty {
+  align-items: center;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 6px;
+  justify-content: center;
+  min-height: 86px;
+}
+.group-empty-title {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 12px;
+  text-align: center;
+}
+.translator-dialog-list {
+  max-height: 320px;
+  overflow: auto;
+  padding-left: 0;
+  padding-right: 0;
 }
 </style>

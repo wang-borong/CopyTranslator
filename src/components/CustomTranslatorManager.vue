@@ -1,36 +1,48 @@
 <template>
   <div class="custom-translator-manager">
-    <v-card flat>
-      <v-card-title class="pb-2 d-flex align-center">
-        {{ trans["aiProviders"] || "AI翻译供应商" }}
-        <v-spacer></v-spacer>
+    <section class="provider-shell">
+      <div class="provider-toolbar">
+        <div>
+          <div class="provider-title">
+            {{ trans["aiProviders"] || "AI翻译供应商" }}
+          </div>
+          <div class="provider-subtitle">
+            {{
+              trans["aiTranslatorDescription"] ||
+              "这些翻译器基于人工智能（大语言模型/LLM），可以理解上下文并提供更自然的翻译。"
+            }}
+          </div>
+        </div>
         <v-btn color="primary" size="small" @click="showAddProviderDialog = true">
           <v-icon size="small" class="mr-1">mdi-plus</v-icon>
           {{ trans["addAIProvider"] || "添加AI供应商" }}
         </v-btn>
-      </v-card-title>
+      </div>
 
-      <v-card-text>
-        <v-alert type="info" dense text class="mb-4">
+      <div class="provider-body">
+        <v-alert type="info" density="compact" variant="tonal" class="mb-4">
           {{
             trans["aiTranslatorDescription"] ||
             "这些翻译器基于人工智能（大语言模型/LLM），可以理解上下文并提供更自然的翻译。所有在此处添加的供应商都需要您自行配置API密钥。"
           }}
         </v-alert>
 
-        <v-expansion-panels v-if="providers.length > 0" multiple>
-          <v-expansion-panel v-for="provider in providers" :key="provider.id">
+        <v-expansion-panels v-if="providers.length > 0" multiple class="provider-panels">
+          <v-expansion-panel
+            v-for="provider in providers"
+            :key="provider.id"
+            class="provider-panel"
+          >
             <v-expansion-panel-title>
-              <div class="d-flex align-center flex-grow-1">
+              <div class="provider-row">
                 <div
                   :class="[
                     'provider-icon',
-                    'mr-2',
                     `provider-${provider.providerType}`,
                   ]"
                 ></div>
-                <div class="flex-grow-1">
-                  <div class="font-weight-medium">
+                <div class="provider-meta">
+                  <div class="provider-name">
                     {{ provider.name }}
                     <v-chip
                       v-if="provider.providerType === 'stepfun'"
@@ -41,7 +53,7 @@
                       {{ trans["stepfunCustomNote"] || "需自备API密钥" }}
                     </v-chip>
                   </div>
-                  <div class="caption grey--text">
+                  <div class="provider-api">
                     {{ provider.apiBase }} |
                     {{ provider.enabledModels.length }}
                     {{ trans["modelsEnabled"] || "个模型已启用" }}
@@ -51,11 +63,11 @@
             </v-expansion-panel-title>
 
             <v-expansion-panel-text>
-              <v-card flat>
-                <v-card-actions class="px-0 py-2">
+              <div class="provider-detail">
+                <div class="provider-actions">
                   <v-btn
                     size="small"
-                    variant="text"
+                    variant="tonal"
                     color="primary"
                     @click="editProvider(provider)"
                   >
@@ -64,7 +76,7 @@
                   </v-btn>
                   <v-btn
                     size="small"
-                    variant="text"
+                    variant="tonal"
                     color="error"
                     @click="removeProviderConfirm(provider.id)"
                   >
@@ -72,17 +84,17 @@
                     {{ trans["delete"] || "删除" }}
                   </v-btn>
                   <v-spacer></v-spacer>
-                  <v-btn size="small" variant="text" @click="testProvider(provider)">
+                  <v-btn size="small" variant="tonal" @click="testProvider(provider)">
                     <v-icon size="small" class="mr-1">mdi-test-tube</v-icon>
                     {{ trans["test"] || "测试" }}
                   </v-btn>
-                </v-card-actions>
+                </div>
 
                 <v-divider></v-divider>
 
-                <v-card-text class="px-0">
-                  <div class="d-flex align-center mb-2">
-                    <span class="subtitle-2">{{
+                <div class="provider-models">
+                  <div class="model-toolbar">
+                    <span class="model-title">{{
                       trans["selectModels"] || "选择要启用的模型"
                     }}</span>
                     <v-spacer></v-spacer>
@@ -126,8 +138,8 @@
 
                   <v-alert
                     v-else-if="!provider.fetchingModels"
-                    dense
-                    text
+                    density="compact"
+                    variant="tonal"
                     type="info"
                     class="mt-2"
                   >
@@ -138,8 +150,8 @@
 
                   <v-alert
                     v-if="provider.modelFetchError"
-                    dense
-                    text
+                    density="compact"
+                    variant="tonal"
                     type="error"
                     class="mt-2"
                     closable
@@ -147,17 +159,27 @@
                   >
                     {{ provider.modelFetchError }}
                   </v-alert>
-                </v-card-text>
-              </v-card>
+                </div>
+              </div>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <div v-else class="text-center pa-4 grey--text">
-          {{ trans["noAIProviders"] || "暂无AI供应商" }}
+        <div v-else class="provider-empty">
+          <v-icon size="32">mdi-robot-outline</v-icon>
+          <div>{{ trans["noAIProviders"] || "暂无AI供应商" }}</div>
+          <v-btn
+            color="primary"
+            size="small"
+            variant="tonal"
+            @click="showAddProviderDialog = true"
+          >
+            <v-icon size="16" class="mr-1">mdi-plus</v-icon>
+            {{ trans["addAIProvider"] || "添加AI供应商" }}
+          </v-btn>
         </div>
-      </v-card-text>
-    </v-card>
+      </div>
+    </section>
 
     <v-dialog v-model="showAddProviderDialog" max-width="600px" persistent>
       <v-card>
@@ -179,8 +201,8 @@
               item-value="value"
               :label="trans['selectProviderTemplate'] || '选择AI供应商类型'"
               @update:model-value="onTemplateChange"
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
             >
             </v-select>
 
@@ -189,16 +211,16 @@
               :label="trans['providerName'] || '供应商名称'"
               :rules="[rules.required]"
               :hint="trans['providerNameHint'] || '例如: OpenAI 官方账号'"
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
             ></v-text-field>
 
             <v-text-field
               v-model="providerForm.apiBase"
               :label="trans['apiBase'] || 'API Base URL'"
               :rules="[rules.required]"
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
             ></v-text-field>
 
             <v-text-field
@@ -206,8 +228,8 @@
               :label="trans['apiKey'] || 'API Key'"
               :rules="[rules.required]"
               type="password"
-              outlined
-              dense
+              variant="outlined"
+              density="compact"
             ></v-text-field>
 
             <v-expansion-panels flat>
@@ -227,9 +249,9 @@
                       max="1"
                       step="0.1"
                       thumb-label
-                      dense
+                      density="compact"
                     ></v-slider>
-                    <p class="caption grey--text">{{ temperatureDesc }}</p>
+                    <p class="temperature-desc">{{ temperatureDesc }}</p>
                   </div>
 
                   <v-text-field
@@ -237,8 +259,8 @@
                     v-model.number="providerForm.config.maxTokens"
                     :label="trans['maxTokens'] || '最大Token数'"
                     type="number"
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-text-field>
 
                   <v-divider class="my-3"></v-divider>
@@ -254,8 +276,8 @@
                     item-title="title"
                     item-value="value"
                     :label="trans['aiPromptPreset'] || '提示词预设'"
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-select>
 
                   <v-switch
@@ -278,8 +300,8 @@
                     "
                     rows="2"
                     auto-grow
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-textarea>
 
                   <v-textarea
@@ -292,8 +314,8 @@
                     "
                     rows="3"
                     auto-grow
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-textarea>
 
                   <v-textarea
@@ -307,8 +329,8 @@
                     "
                     rows="5"
                     auto-grow
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-textarea>
 
                   <v-textarea
@@ -321,8 +343,8 @@
                     "
                     rows="3"
                     auto-grow
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-textarea>
 
                   <v-textarea
@@ -335,8 +357,8 @@
                     "
                     rows="3"
                     auto-grow
-                    outlined
-                    dense
+                    variant="outlined"
+                    density="compact"
                   ></v-textarea>
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -366,45 +388,45 @@
             v-model="testModel"
             :items="testingProvider ? testingProvider.enabledModels : []"
             :label="trans['selectModel'] || '选择模型'"
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
           ></v-select>
 
           <v-textarea
             v-model="testText"
             :label="trans['testText'] || '测试文本'"
             rows="2"
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
           ></v-textarea>
 
-          <v-row dense>
-            <v-col cols="6">
+          <div class="test-language-row">
+            <div>
               <v-select
                 v-model="testFrom"
                 :items="testLanguages"
                 :label="trans['sourceLanguage'] || 'From'"
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
               ></v-select>
-            </v-col>
-            <v-col cols="6">
+            </div>
+            <div>
               <v-select
                 v-model="testTo"
                 :items="testLanguages"
                 :label="trans['targetLanguage'] || 'To'"
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
               ></v-select>
-            </v-col>
-          </v-row>
+            </div>
+          </div>
 
           <v-btn color="primary" @click="runTest" :loading="testing" block>
             {{ trans["test"] || "测试" }}
           </v-btn>
 
           <div v-if="testResult" class="mt-3">
-            <v-alert type="success" dense>
+            <v-alert type="success" density="compact" variant="tonal">
               <div>
                 <strong>{{ trans["testResult"] || "测试结果" }}:</strong>
               </div>
@@ -413,7 +435,7 @@
           </div>
 
           <div v-if="testError" class="mt-3">
-            <v-alert type="error" dense>
+            <v-alert type="error" density="compact" variant="tonal">
               {{ testError }}
             </v-alert>
           </div>
@@ -470,20 +492,30 @@ const testError = ref("");
 const testingProvider = ref<ProviderWithUI | null>(null);
 const testModel = ref("");
 
-const testLanguages = ["en", "zh-CN", "zh-TW", "ja", "ko", "fr", "es", "de", "ru"];
+const testLanguages = [
+  "en",
+  "zh-CN",
+  "zh-TW",
+  "ja",
+  "ko",
+  "fr",
+  "es",
+  "de",
+  "ru",
+];
 
 type ProviderBehaviorConfig = NonNullable<ProviderConfig["config"]>;
 
 const createDefaultBehaviorConfig = (): ProviderBehaviorConfig => ({
-    temperature: 0.3,
-    maxTokens: 4000,
-    promptPreset: "faithful",
-    rolePrompt: "",
-    systemPrompt: "",
-    userPrompt: "",
-    styleGuide: "",
-    glossary: "",
-    preserveFormatting: true,
+  temperature: 0.3,
+  maxTokens: 4000,
+  promptPreset: "faithful",
+  rolePrompt: "",
+  systemPrompt: "",
+  userPrompt: "",
+  styleGuide: "",
+  glossary: "",
+  preserveFormatting: true,
 });
 
 const normalizeBehaviorConfig = (
@@ -744,5 +776,132 @@ const runTest = async () => {
 .custom-translator-manager {
   height: 100%;
   overflow: auto;
+  padding-right: 4px;
+}
+.provider-shell {
+  background: rgba(var(--v-theme-surface), 0.72);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.provider-toolbar {
+  align-items: center;
+  background: rgba(var(--v-theme-on-surface), 0.035);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+.provider-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22px;
+}
+.provider-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 12px;
+  line-height: 18px;
+  max-width: 760px;
+}
+.provider-body {
+  padding: 12px;
+}
+.provider-panels {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.provider-panel + .provider-panel {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+}
+.provider-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+.provider-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.provider-name {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-weight: 700;
+  gap: 6px;
+  line-height: 20px;
+}
+.provider-api {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 12px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.provider-detail {
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  padding: 10px;
+}
+.provider-actions,
+.model-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.provider-actions {
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+}
+.provider-models {
+  padding-top: 10px;
+}
+.model-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+.temperature-desc {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 12px;
+  line-height: 18px;
+  margin: 4px 0 0;
+}
+.test-language-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.provider-empty {
+  align-items: center;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  gap: 8px;
+  justify-content: center;
+  min-height: 160px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .provider-toolbar,
+  .provider-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .provider-toolbar :deep(.v-btn) {
+    width: 100%;
+  }
+
+  .test-language-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
