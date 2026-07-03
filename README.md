@@ -1,169 +1,231 @@
-![logo](https://user-images.githubusercontent.com/22427645/50773452-d738dd80-12cb-11e9-9b7c-45e5d7f74c8a.png)
+<p align="center">
+  <img src="src/images/icon.png" alt="CopyTranslator" width="128" height="128">
+</p>
 
-# CopyTranslator 
+# CopyTranslator
 
-[中文 Chinese](README_zh.md)
+[简体中文](README_zh.md)
 
-[![OpenTranslate](https://img.shields.io/badge/Powered_by-OpenTranslate-brightgreen)](https://github.com/OpenTranslate)
-[![](https://img.shields.io/github/stars/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/stargazers)
-[![](https://img.shields.io/github/release/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/releases)
-[![](https://img.shields.io/gitter/room/copytranslator/copytranslator.svg)](https://gitter.im/CopyTranslator/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
-[![](https://img.shields.io/github/downloads/copytranslator/copytranslator/total.svg)](https://github.com/copytranslator/copytranslator/wiki/Downloads-%E4%B8%8B%E8%BD%BD%E4%B8%8E%E5%AE%89%E8%A3%85)
-![](https://img.shields.io/badge/platform-windows|macos|linux-orange.svg)
-[![](https://img.shields.io/github/license/copytranslator/copytranslator.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/wang-borong/CopyTranslator)](https://github.com/wang-borong/CopyTranslator/releases)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-orange)
+![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db)
+![Vue](https://img.shields.io/badge/Vue-3.x-42b883)
+[![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
-## 🎉 What's New
+CopyTranslator is a desktop translation assistant for reading, writing and
+research workflows. This branch is the Tauri migration and optimization edition:
+the original Electron shell has been replaced by Tauri 2, while the app keeps
+the core "copy to translate" workflow and adds a refreshed interface, AI
+translation, OCR, configurable shortcuts, transparent windows and modern
+cross-platform release builds.
 
-### v12 Zhiwei - Large Language Model AI Translation Era
+## Highlights
 
-The v12 release introduces **Large Language Model AI Translation**! CopyTranslator can now integrate various translation services that comply with OpenAI API format, bringing smarter and more accurate translation experience.
+- Copy to translate: monitor clipboard text, clean copied PDF line breaks and
+  translate immediately.
+- AI translation engines: add OpenAI-compatible providers such as OpenAI,
+  DeepSeek, Moonshot, Zhipu AI, Alibaba Cloud DashScope, Ollama, NVIDIA NIM,
+  OpenRouter or any custom endpoint.
+- Prompt customization: choose faithful, natural, technical, academic, casual or
+  custom presets, and tune role prompts, system prompts, temperature, token
+  limits and formatting preservation.
+- Built-in translation engines: Google, Baidu, Caiyun, Youdao, Sogou, DeepL,
+  Tencent, Tencent Smart, Alibaba Cloud, Azure, Volcano Engine, Yandex,
+  Niutrans, StepFun and more.
+- OCR translation: copy a screenshot image to the clipboard, recognize text via
+  Baidu OCR REST API, then translate it.
+- Productive reading modes: horizontal contrast, vertical contrast, focus mode,
+  multi-source comparison, smart dictionary, smart bidirectional translation and
+  incremental copy.
+- Polished Tauri interface: light/dark/auto themes, adjustable fonts, content
+  spacing, line height, transparency, resizable settings panel and localized
+  English/Chinese UI.
+- Shortcut management: configure global and in-window shortcuts from the
+  Settings page.
+- XDG/OS-native configuration path, with automatic migration from the old
+  `~/copytranslator/copytranslator.json` location.
+- GitHub Release update checks now use this repository:
+  `wang-borong/CopyTranslator`.
 
-**Key Highlights:**
-- 🤖 **LLM AI Translation**: Support OpenAI, DeepSeek, Moonshot, Zhipu AI, Alibaba Cloud Bailian, Ollama, and more
-- ⚡ **StepFun Free Translation**: Built-in StepFun translation engine with free [`step-3.5-flash`](https://static.stepfun.com/blog/step-3.5-flash/) model, ready to use out of the box
-- 🔧 **Visual Vendor Management**: Easily manage AI translation vendors and models through settings interface
-- 🎯 **Smart Model Selection**: Fetch available model list from API and freely choose which models to enable
+## Basic Usage
 
-> See the [v12 Release Notes](https://copytranslator.github.io/changelogs/v12.html) for detailed updates.
+1. Start CopyTranslator.
+2. Enable clipboard listening if it is disabled.
+3. Select text in a PDF, browser, editor or any other app.
+4. Copy it with the system copy command.
+5. CopyTranslator cleans the text, translates it and displays the result.
 
-**Foreign language assisted reading and translation solution**
+For split paragraphs across pages, use incremental copy. You can enable
+incremental copy from the UI, right-click the layout action button for a one-shot
+incremental copy, or configure a shortcut for it.
 
-**Please update to latest version [![](https://img.shields.io/github/release/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/releases)as soon as possible. This is a new version that you have never experienced before. Trust me, you will fall in love with it within minutes.**
+## AI Translation
 
-**If you found it helpful to you, no need to follow or fork, just give me a star and recommend it to your friends around you.**
+CopyTranslator supports OpenAI-compatible chat completion APIs. A provider can
+expose multiple models, and each enabled model becomes a selectable translation
+engine.
 
-(Online translation resources come from the Internet, copyright belongs to related websites, and this software is only for academic usage.)
+To add an AI provider:
 
-**This software is free and open source. If you find someone selling this software , please report it in the Issue.**
+1. Open `Settings` -> `Custom Translators`.
+2. Click `Add AI Provider`.
+3. Pick a template, such as OpenAI, DeepSeek, Moonshot, Zhipu AI, DashScope,
+   Ollama, NVIDIA NIM, OpenRouter or Custom.
+4. Fill in the provider name, API Base URL and API Key.
+5. Open advanced options if needed:
+   - prompt preset
+   - translator role
+   - custom system prompt
+   - temperature
+   - max tokens
+   - preserve formatting
+6. Refresh the model list and select the models you want to enable.
+7. Return to the main window and choose the new model from the engine menu.
 
-## Introduction
+The built-in StepFun entry is also available as a normal translation engine.
+Availability of free or third-party models depends on the upstream service and
+release configuration.
 
-### Preface
+## OCR
 
-Researchers always have to read a lot of literature, and understanding the content of the literature has become the norm in scientific research life. However, when we copy the PDF content and paste it into the webpage translation, there may be extra line breaks that lead to garbled translation, and the translation does not match the Chinese reading habits. The translation results are very poor and  you need to manually delete the line break, and `CopyTranslator` can help us solve this problem quickly and perfectly.
+The Tauri build currently integrates Baidu OCR through the REST API.
 
-Just open the `CopyTranslator` and copy the PDF text to clipboard,  `CopyTranslator` will watch the clipboard changes, then it will process the clipboard contents (such as removing extra line breaks, etc.) and display the translation results. The translation effect is greatly improved compared to the direct copy and paste to the web version of the translation, and the time required for translation is greatly reduced. With the powerful Google translation API, the translation quality is guaranteed. There are also a wealth of options you can set, such as automatically copy translation results to the clipboard, [Incremental Copy](#Incremental-Copy), [Smart Translation](#Smart-Translation), etc., it effectively improve people's reading and translation efficiency of foreign literature.
+1. Open `Settings` -> `OCR`.
+2. Enable OCR.
+3. Fill in `app_id`, `api_key` and `secret_key` for `baidu-ocr`.
+4. Take a screenshot and copy the image to the clipboard.
+5. CopyTranslator recognizes the image text and sends it to the selected
+   translation engine.
 
-**After several iterations, `CopyTranslator` has became more and more powerful as well as user-friendly. It is recommended to read the full [User Manual](https://copytranslator.github.io/guide/) to make best use of it**.
+OCR requests are sent to the configured OCR service. Do not use OCR for content
+that you are not allowed to upload to a third-party service.
 
-### Core usage
+## Shortcuts
 
-**Open a webpage/PDF, select the text to be translated, copy the text to the clipboard, `CopyTranslator` will listens to the clipboard change, and  process the clipboard content (such as removing extra line breaks, etc.), translate it, and display**.  Just copy the text,`CopyTranslator` will immediately give the translation result, effectively improving your work efficiency.**
+Shortcuts can be configured in `Settings` -> `Shortcuts`.
 
-![](https://s1.ax1x.com/2018/11/30/FmrNFS.gif)
+Default global shortcuts:
 
-## Features
+| Action | Shortcut |
+| --- | --- |
+| Focus mode | `Shift+F1` |
+| Contrast mode | `Shift+F2` |
+| Simulate copy | `Super+Backquote` |
+| Simulate incremental copy | `Super+Shift+Backquote` |
 
-### Copy=Translate
+Default in-window shortcuts:
 
-**Greatly simplify the steps required for translation**, just copy the text to the clipboard, and wait to view the translation results in the next second, enjoy the WYSIWYG pleasure, and we also have the [Tap to Copy](#tap-to-copyexperimental) mechanism , making it easier for you to copy text.
+| Action | Shortcut |
+| --- | --- |
+| Copy result | `CmdOrCtrl+S` |
+| Copy source | `CmdOrCtrl+D` |
+| Hide window | `Escape` |
+| Standard edit actions | `CmdOrCtrl+Z/X/C/V/A` |
 
-### Solve the problem of PDF copy translation
+If a global shortcut is already used by the operating system or another app,
+registration can fail. Change the shortcut in Settings and save again.
 
-`CopyTranslator` is specifically optimized for English and Chinese pdf line breaks and sentence endings, basically solving the problem caused by extra sentence breaks and line breaks. The following figure shows the translation results using `CopyTranslator`. It's obvious that the translation effect is greatly improved compared to directly copy and paste to the online translator. At the same time, with the powerful google translation API, the translation quality is guaranteed, and the translation.google.cn used is also faster to connect, no need to worry about network problems.
+## Configuration
 
-![](https://s1.ax1x.com/2018/09/13/iEiIRx.png)
+CopyTranslator stores configuration in the OS-native config directory:
 
+| System | Config directory |
+| --- | --- |
+| Linux | `~/.config/copytranslator` |
+| macOS | `~/Library/Application Support/copytranslator` |
+| Windows | `%APPDATA%\copytranslator` |
 
+The main config file is `copytranslator.json`. On first run, the app attempts to
+migrate the old config file from `~/copytranslator/copytranslator.json`.
 
-### Multi segments Co-translation
+API keys are stored locally in the configuration file. Treat the config directory
+as sensitive data.
 
-More efficient, while keeping the original segment as much as possible.
+## Development
 
-![entoch](./assets/entoch.png)
+Requirements:
 
+- Node.js 20 or newer
+- Rust stable, with Rust 1.77.2 or newer recommended
+- Platform webview dependencies required by Tauri 2
 
-### Powerful Focus Mode
+Install dependencies:
 
-Unparalleled powerful focus mode, while it's just a simple text box, it can meet the needs of 90% of daily translation!
+```bash
+npm ci
+```
 
-- **The translation is displayed in the `Focus mode` and `Contrast Mode` at the same time**. 
-- **The result of [Smart Dictionary](#Smart-Dictionary) is only displayed in `Focus Mode`, colorful text helps you quickly distinguish between items**.
-- **When the cursor is in the focus mode result box, `Ctrl+Enter` to translate the contents of the box, `Ctrl+B` to use Baidu to search the contents of the box, and `Ctrl+G` to use Google to search the contents of the box**.
-- **The right-click menu of `Focus mode` can be used to set up almost all options as well as all the function**.
+Run the Tauri app in development mode:
 
-### Smart Translation
+```bash
+npm run tauri dev
+```
 
-`CopyTranslator` will automatically recognize the copied text, **intelligently translate according to the set `source language` and `target language`**, for example, set `source language` to English,and the ` target language` to be Simplified Chinese. If you copy English, it will be translated into Chinese, and if you copy Chinese, it will be translated into English. 
+Build the frontend only:
 
-### Smart Dictionary
+```bash
+npm run build
+```
 
-For phrase or word, you will see a more detailed explanations.
+Check the Tauri backend:
 
-![1537871607106](assets/1537871607106.png)
+```bash
+cd src-tauri
+cargo check --locked
+```
 
-### Incremental Copy
+Build release bundles:
 
-Append the copied text to the source other than replace it, **especially useful when the paragraph is separated in different page.** Check the `Incremental Copy ` option to enable it.
+```bash
+npm run tauri build
+```
 
-### Dual Mode Free Switching to Cope with Different Scenes
+Linux notes:
 
-- The `Contrast Mode` is in accordance with the user's previous usage habits, and the original text is displayed against the translation.
-- `Focus mode` only provides a translation window for you to follow the translation. When using the focus mode, please check the `Stay on top` and `Listen Clipboard`. Check the `Auto copy` if necessary, 
+- The CI installs `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`,
+  `libxdo-dev`, `librsvg2-dev`, `patchelf`, `pkg-config`, `curl`, `wget` and
+  related build tools.
+- Runtime features such as simulated copy/paste and active-window detection use
+  `xdotool` when available.
+- Transparent windows require compositor support from the desktop environment.
 
+## Release
 
-### Customization
-- Interface style, font, background and other styles can be easily customized.
-- Customizible Global Hotkey
-- Vast interface language to choose from and you are able to create or download locale language files.
+The GitHub Actions workflow builds and checks Windows, macOS and Linux.
 
-### Other features
+Release builds are created when:
 
-- Support for rich languages, `CopyTranslator` support whatever Google translation supports.
-- Many automated customization options are available, such as `Auto Copy`, `Config Memorization`, `Auto Hide`, `Auto Display`.
-- There will be more new features in`CopyTranslator` , so stay tuned.
+- a tag matching `v*` is pushed, or
+- the workflow is run manually from GitHub Actions.
 
-Please refer to the [Documentation](https://copytranslator.github.io) to learn more about `CopyTranslator`
+To update the release version locally:
 
-## User Manual/Documentation/Homepage
+```bash
+npm run set-release-version -- 12.1.1
+```
 
-Link: [User Manual](https://copytranslator.github.io/guide/)
+Official downloads are attached to:
 
-## Download/Install
+https://github.com/wang-borong/CopyTranslator/releases
 
-Link: [Install Guide](https://copytranslator.github.io/download/)
+The in-app update check reads the latest release from:
 
-**After several iterations, `CopyTranslator` has became more and more powerful as well as user-friendly. It is recommended to read the full  [User Manual](https://copytranslator.github.io/guide/) to make best use of it**.
+https://api.github.com/repos/wang-borong/CopyTranslator/releases/latest
 
-## Reprint statement
+## Privacy Notes
 
-This software is free open source software, the developer is [Elliott Zheng](https://github.com/elliottzheng), STAR and PR are welcomed.  **Please  attach the project address when forwarding, and the reprinting `CopyTranslator` without project homepage/software official website is infringement.**
-
-## Related Links
-
-- [Software official website](https://copytranslator.github.io/) 
-- [Project homepage on Github ](https://github.com/copytranslator/CopyTranslator) 
-- [Project homepage on Gitee](https://gitee.com/ylzheng/CopyTranslator) 
-- [Official Email](mailto:copytranslator@hypercube.top)
-
-## Acknowledgements
-
-`CopyTranslator`'s rebirth depends on the contributions of many devoted people. As the limited space, there is a detailed list here: [Acknowledgements](https://copytranslator.github.io/about/acknowledge.html).
+CopyTranslator monitors clipboard content only for local app behavior, but
+translation and OCR content is sent to the engine or OCR provider you select.
+Review each provider's privacy policy before sending sensitive text, documents
+or screenshots.
 
 ## License
 
-The code is licensed under GNU GENERAL PUBLIC LICENSE 2.0. For more details, read the [LICENSE](./LICENSE) file.
+CopyTranslator is licensed under the GNU General Public License v2. See
+[LICENSE](LICENSE) for details.
 
-## Contributors
+## Acknowledgements
 
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tr>
-    <td align="center"><a href="https://about.me/s8321414"><img src="https://avatars2.githubusercontent.com/u/9457283?v=4" width="100px;" alt=""/><br /><sub><b>Jeff Huang</b></sub></a><br /><a href="#translation-s8321414" title="Translation">🌍</a></td>
-    <td align="center"><a href="http://mzemlickis.lv"><img src="https://avatars0.githubusercontent.com/u/4556944?v=4" width="100px;" alt=""/><br /><sub><b>Mārtiņš Zemlickis</b></sub></a><br /><a href="#design-mzemlickis" title="Design">🎨</a></td>
-    <td align="center"><a href="https://github.com/Sandural"><img src="https://avatars3.githubusercontent.com/u/16163090?v=4" width="100px;" alt=""/><br /><sub><b>黎紫珊</b></sub></a><br /><a href="#platform-Sandural" title="Packaging/porting to new platform">📦</a></td>
-    <td align="center"><a href="https://ziqiangxu.github.io/blog/"><img src="https://avatars2.githubusercontent.com/u/18530271?v=4" width="100px;" alt=""/><br /><sub><b>Daryl.Xu</b></sub></a><br /><a href="#platform-ziqiangxu" title="Packaging/porting to new platform">📦</a></td>
-    <td align="center"><a href="https://segmentfault.com/u/xinruzhishui_zen"><img src="https://avatars1.githubusercontent.com/u/38101170?v=4" width="100px;" alt=""/><br /><sub><b>Andy AO</b></sub></a><br /><a href="https://github.com/CopyTranslator/CopyTranslator/commits?author=Andy-AO" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/dEN5-tech"><img src="https://avatars0.githubusercontent.com/u/54153548?v=4" width="100px;" alt=""/><br /><sub><b>dEN5</b></sub></a><br /><a href="#translation-dEN5-tech" title="Translation">🌍</a></td>
-  </tr>
-</table>
-
-<!-- markdownlint-enable -->
-<!-- prettier-ignore-end -->
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+This project builds on the original CopyTranslator project and the work of its
+contributors. This migration edition focuses on keeping the core workflow alive
+with a modern Tauri runtime, updated UI and new translation capabilities.

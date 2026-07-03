@@ -1,167 +1,192 @@
-![logo](https://user-images.githubusercontent.com/22427645/50773452-d738dd80-12cb-11e9-9b7c-45e5d7f74c8a.png)
+<p align="center">
+  <img src="src/images/icon.png" alt="CopyTranslator" width="128" height="128">
+</p>
 
-[英语/English](README.md)
+# CopyTranslator
 
-[![OpenTranslate](https://img.shields.io/badge/Powered_by-OpenTranslate-brightgreen)](https://github.com/OpenTranslate)
-[![](https://img.shields.io/github/stars/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/stargazers)
-[![](https://img.shields.io/github/release/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/releases)
-[![](https://img.shields.io/gitter/room/copytranslator/copytranslator.svg)](https://gitter.im/CopyTranslator/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
-[![](https://img.shields.io/github/downloads/copytranslator/copytranslator/total.svg)](https://github.com/copytranslator/copytranslator/wiki/Downloads-%E4%B8%8B%E8%BD%BD%E4%B8%8E%E5%AE%89%E8%A3%85)
-![](https://img.shields.io/badge/platform-windows|macos|linux-orange.svg)
-[![](https://img.shields.io/github/license/copytranslator/copytranslator.svg)](./LICENSE)
+[English](README.md)
 
-## 🎉 最新更新
+[![Release](https://img.shields.io/github/v/release/wang-borong/CopyTranslator)](https://github.com/wang-borong/CopyTranslator/releases)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-orange)
+![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db)
+![Vue](https://img.shields.io/badge/Vue-3.x-42b883)
+[![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
-### v12 知微 - 大模型 AI 翻译时代
+CopyTranslator 是一款面向阅读、写作、论文和日常工作的桌面翻译助手。本仓库是迁移优化版本：已经将原 Electron 外壳迁移到 Tauri 2，同时保留“复制即翻译”的核心体验，并加入更现代的界面、AI 翻译、OCR、快捷键配置、透明窗口和跨平台 Release 构建。
 
-v12 版本重磅推出**大模型 AI 翻译**功能！CopyTranslator 现在可以接入各种符合 OpenAI 格式 API 的翻译服务，带来更智能、更准确的翻译体验。
+## 版本亮点
 
-**核心亮点：**
-- 🤖 **大模型 AI 翻译**：支持 OpenAI、DeepSeek、Moonshot、智谱 AI、阿里云百炼、Ollama 等多种 AI 翻译服务
-- ⚡ **阶跃星辰免费翻译**：与 StepFun 合作，内置限时免费的 [`step-3.5-flash`](https://static.stepfun.com/blog/step-3.5-flash/) 模型，开箱即用
-- 🔧 **可视化供应商管理**：通过设置界面轻松管理 AI 翻译供应商和模型
-- 🎯 **智能模型选择**：支持从 API 获取可用模型列表，自由选择启用
+- 复制即翻译：监听剪贴板文本，自动清理 PDF 复制时常见的多余换行，然后立即翻译。
+- AI 翻译引擎：支持 OpenAI 兼容接口，可接入 OpenAI、DeepSeek、Moonshot、智谱 AI、阿里云百炼、Ollama、NVIDIA NIM、OpenRouter 或自定义端点。
+- 提示词定制：支持忠实、自然、技术、学术、日常、自定义等预设，可配置翻译角色、System Prompt、温度、最大 Token 和格式保留策略。
+- 多翻译引擎：内置 Google、百度、彩云、有道、搜狗、DeepL、腾讯、腾讯交互翻译、阿里云、Azure、火山、Yandex、小牛、StepFun 等引擎。
+- OCR 翻译：截图后复制图片到剪贴板，通过百度 OCR REST API 识别文字并继续翻译。
+- 阅读工作流：横向对照、纵向对照、专注模式、多源对比、智能词典、智能互译、增量复制和配置快照。
+- 新界面体验：支持浅色/深色/跟随系统、字体设置、内容内边距、行高、透明度、可调整设置栏、中文/英文界面语言。
+- 快捷键管理：在设置界面直接配置全局快捷键和窗口内快捷键。
+- 标准配置目录：Linux 使用 `~/.config/copytranslator`，并自动迁移旧的 `~/copytranslator/copytranslator.json`。
+- 更新检查和下载地址已切换到当前仓库的 GitHub Release：`wang-borong/CopyTranslator`。
 
-> 详细更新内容请查看 [v12 版本更新日志](https://copytranslator.github.io/changelogs/v12.html)
+## 基本用法
 
-**复制即翻译的外文辅助阅读翻译解决方案**
+1. 启动 CopyTranslator。
+2. 确认已经启用“监听剪贴板”。
+3. 在 PDF、浏览器、编辑器或其他软件中选中需要翻译的文字。
+4. 执行系统复制操作。
+5. CopyTranslator 会自动净化文本、翻译并显示结果。
 
-**请尽快更新到[![](https://img.shields.io/github/release/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/releases)，这是你没有体验过的全新版本，只需3分钟，你就会跟我一样，爱上这个软件。**
+如果段落跨页或一次复制不完整，可以使用增量复制。你可以在界面里启用增量复制，也可以右键布局按钮标记“下一次复制为增量复制”，还可以在快捷键设置中绑定相关动作。
 
-**如果您觉得软件对您有所帮助，不用follow，不用fork，点一下右上角的star并推荐给周围的朋友就是对我极大的支持。**
+## AI 翻译
 
-(在线翻译资源来自互联网，版权属于相关网站，软件仅供交流使用，严禁商用)
+当前 AI 翻译基于 OpenAI 兼容的 Chat Completion API。一个供应商可以启用多个模型，每个启用的模型都会出现在翻译引擎列表中。
 
-**本软件免费开源，如果您发现有人在网上售卖此软件，请帮忙举报下**
+添加 AI 供应商：
 
-<div align="center">:heart: 喜欢这个项目? 可以在<a href="https://afdian.com/a/elliottzheng/plan" target="_blank">爱发电</a>请作者喝杯咖啡</div>   
+1. 打开“设置” -> “自定义翻译器”。
+2. 点击“添加 AI 供应商”。
+3. 选择模板，例如 OpenAI、DeepSeek、Moonshot、智谱 AI、阿里云百炼、Ollama、NVIDIA NIM、OpenRouter 或自定义。
+4. 填写供应商名称、API Base URL 和 API Key。
+5. 如有需要，展开高级选项：
+   - 提示词预设
+   - 翻译角色
+   - 自定义 System Prompt
+   - 温度
+   - 最大 Token 数
+   - 是否保留格式
+6. 点击刷新获取模型列表，并选择要启用的模型。
+7. 回到主界面，在翻译引擎菜单中选择新添加的模型。
 
-## 简介
-### 前言
-科研人员总少不了阅读大量文献，理解文献内容就成了科研生活常态，而我们平时复制PDF内容黏贴到网页翻译的时候可能会出现多余换行而导致翻译乱码，译文与中文阅读习惯不符的情况，翻译结果很差，需要手动删除换行，而`CopyTranslator`可以帮我们快速且完美地解决这个问题。
+内置的 StepFun 入口也会作为普通翻译引擎显示。免费模型或第三方模型是否可用，取决于上游服务策略和当前发布包配置。
 
-只需打开`CopyTranslator`，直接复制PDF文本，`CopyTranslator`监听到剪贴板变化，会将剪贴板内容进行处理（如去除多余换行等），并显示翻译结果，翻译效果相比于直接复制黏贴到网页版翻译有了巨大的改善，同时翻译所需时间也大大减少，借助于强大的在线翻译API，翻译质量有保证。另外还有丰富的选项可以设置，如自动复制翻译结果到剪贴板，[增量复制](#增量复制)，[智能互译](#智能互译)等等，有效提高人们阅读及翻译外文文献的效率。
-`CopyTranslator`经过多次迭代，功能越来越丰富，越来越人性化，**建议阅读完整[使用指南](https://copytranslator.github.io/guide/)，最大限度发挥其功能。**
+## OCR
 
-### 核心用法
-**打开网页/PDF，选中要翻译的段落文字，按Ctrl+C/右键复制文本，CopyTranslator监听到剪贴板变化，会将剪贴板内容进行处理（如去除多余换行等），翻译，并显示**。只要这边鼠标一复制，不用粘贴，`CopyTranslator`立刻给出翻译结果，有效提高工作效率。
+Tauri 版本当前集成的是百度 OCR REST API。
 
-  ![](https://s1.ax1x.com/2018/11/30/FmrNFS.gif)
+使用步骤：
 
-## 特性
-### 复制即翻译
-**大大简化翻译所需步骤**，只需复制文本到剪贴板，下一秒即可查看翻译结果，让你享受所见即所得的快感，更有[点按复制](#点按复制)机制，让你复制文本更轻松。
+1. 打开“设置” -> “OCR”。
+2. 启用 OCR。
+3. 在 `baidu-ocr` 中填写 `app_id`、`api_key` 和 `secret_key`。
+4. 使用系统截图工具截图，并将图片复制到剪贴板。
+5. CopyTranslator 检测到图片后会识别文字，并使用当前翻译引擎进行翻译。
 
-###  解决PDF复制翻译换行问题
-**`CopyTranslator`专门针对英文及中文pdf的换行和句尾做了优化，基本解决断句和换行的问题。** 以下为使用`CopyTranslator`直接复制翻译后的结果，可以看出翻译效果相比于直接复制黏贴到网页有了巨大的改善。同时，借助于常用的在线翻译API，翻译质量有保证，连接速度也较快，无需担心网络问题。
+OCR 内容会发送到所配置的 OCR 服务。涉及隐私、合同、论文未公开内容或其他敏感信息时，请先确认你有权上传给第三方服务。
 
-![](https://s1.ax1x.com/2018/09/13/iEiIRx.png)
+## 快捷键
 
-### 多段同时翻译
+快捷键可以在“设置” -> “快捷键”中配置。
 
-效率更高，同时尽可能保持原有分段。
+默认全局快捷键：
 
-![](https://s1.ax1x.com/2018/09/13/iEi7QK.png)
+| 动作 | 快捷键 |
+| --- | --- |
+| 专注模式 | `Shift+F1` |
+| 对照模式 | `Shift+F2` |
+| 模拟复制 | `Super+Backquote` |
+| 模拟增量复制 | `Super+Shift+Backquote` |
 
+默认窗口内快捷键：
 
-### 强大的专注模式
-无比强大的专注模式，一个简单的文本框，能够满足日常翻译90%的需求!
-- **译文同步显示在`专注模式`和`对照模式`当中。**
-- **当光标位于专注模式结果框中时，`Ctrl+Enter`可以翻译框内内容，`Ctrl+B`实现百度搜索框内内容，`Ctrl+G`实现Google搜索框内内容**。
+| 动作 | 快捷键 |
+| --- | --- |
+| 复制译文 | `CmdOrCtrl+S` |
+| 复制原文 | `CmdOrCtrl+D` |
+| 隐藏窗口 | `Escape` |
+| 常规编辑动作 | `CmdOrCtrl+Z/X/C/V/A` |
 
+如果某个全局快捷键已被系统或其他软件占用，注册可能失败。此时在设置中换一个组合键并保存即可。
 
-### 智能互译      
+## 配置目录
 
-`CopyTranslator`会自动识别所复制的文字，**根据所设置的**`源语言`和`目标语言`**进行自动智能互译**，举个例子，设置`源语言`为英语，`目标语言`为简体中文,这时如果您复制的是英语，会翻译为中文，复制中文则会翻译为英文。
+CopyTranslator 使用操作系统标准配置目录：
 
-### 智能词典
+| 系统 | 配置目录 |
+| --- | --- |
+| Linux | `~/.config/copytranslator` |
+| macOS | `~/Library/Application Support/copytranslator` |
+| Windows | `%APPDATA%\copytranslator` |
 
-对于少于三个词的英语短语或单词，您将能够看到更详细的解释
+主配置文件为 `copytranslator.json`。首次启动时，程序会尝试从旧路径 `~/copytranslator/copytranslator.json` 自动迁移配置。
 
-![](https://s1.ax1x.com/2018/09/26/iManhV.png)
+API Key 会保存在本地配置文件中，请将配置目录视为敏感数据。
 
-### 增量复制
+## 本地开发
 
-将复制的文本附加到原文而不是替换它，**当段落被页面中分隔时尤其有用**。勾选`增量复制`选项以启用它。
+环境要求：
 
-### 多种布局自由切换，应对不同场景
+- Node.js 20 或更新版本
+- Rust stable，建议 Rust 1.77.2 或更新版本
+- Tauri 2 所需的系统 WebView 和打包依赖
 
-- `对照模式`符合用户以前的的使用习惯，原文与译文对照显示。
-- `专注模式`只提供译文窗口，便于您关注译文。使用专注模式时注意勾选`始终置顶`及`监听剪贴板`，必要时应勾选`自动复制`。
+安装依赖：
 
-### 可玩性超强的自定义
-- 支持**自定义全局热键**及方便的快捷键操作
-- 国际化，提供多种界面语言供选择，**并支持自行创建或下载区域语言文件。**
+```bash
+npm ci
+```
 
-### 其他特性
-- 支持语言丰富，多个翻译引擎供你选择。
-- 跨平台，当前支持Mac及Window。
-- 更多自动化的自定义选项可供选择，如`自动复制`，`设置记忆`，`贴边隐藏`,`自动显示`
-- 配合外部脚本实现类似`OneNote`的停靠桌面功能
-- `CopyTranslator`还将继续加入更多新特性，敬请期待。
+启动 Tauri 开发模式：
 
-请查阅[软件文档](https://copytranslator.github.io)了解更多
+```bash
+npm run tauri dev
+```
 
+只构建前端：
 
-## 使用指南/文档/官网
+```bash
+npm run build
+```
 
-传送门：[使用指南](https://copytranslator.github.io/guide/)
+检查 Tauri/Rust 后端：
 
-## 下载/安装
+```bash
+cd src-tauri
+cargo check --locked
+```
 
-传送门：[安装指南](https://copytranslator.github.io/download/)
+构建发布包：
 
-`CopyTranslator`经过多次迭代，功能越来越丰富，越来越人性化，请一定阅读完整[使用指南](https://copytranslator.github.io/guide/)，才能最大限度发挥其功能。
+```bash
+npm run tauri build
+```
 
+Linux 说明：
 
-## 转载声明
-本软件为免费的开源软件，开发者为[Elliott Zheng](https://github.com/elliottzheng)，欢迎STAR，PR。**转发时请一定附上项目地址，未附上项目地址/软件官网的转载行为均构成侵权**。 
+- CI 中安装了 `libwebkit2gtk-4.1-dev`、`libayatana-appindicator3-dev`、`libxdo-dev`、`librsvg2-dev`、`patchelf`、`pkg-config`、`curl`、`wget` 等依赖。
+- 模拟复制、模拟粘贴、活动窗口识别等运行时能力在 Linux 下会优先使用 `xdotool`。
+- 透明窗口依赖桌面环境的合成器支持，不同发行版和窗口管理器的效果可能不同。
 
-## 相关链接
-- [软件官网](https://copytranslator.github.io/)
-- [Github项目主页](https://github.com/copytranslator/CopyTranslator)
-- [码云项目主页](https://gitee.com/ylzheng/CopyTranslator)
-- [官方邮箱](mailto:copytranslator@hypercube.top)
+## 发布
 
-## 致谢
+GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。
 
-`CopyTranslator`的重生离不开大家的无私贡献，感激不尽。篇幅所限，在这里详细列出 [致谢](https://copytranslator.github.io/about/acknowledge.html#%E7%95%8C%E9%9D%A2%E4%B8%8E%E4%BA%A4%E4%BA%92%E8%AE%BE%E8%AE%A1)。
+以下情况会触发 Release 构建：
 
-## 支持CopyTranslator
+- 推送 `v*` 格式的 tag。
+- 在 GitHub Actions 中手动运行发布 workflow。
 
-### 分享
+本地更新发布版本号：
 
-点下star，并分享给您的朋友，社交网络就是对CopyTranslator的极大支持。
+```bash
+npm run set-release-version -- 12.1.1
+```
 
-### 赞助
+正式下载地址：
 
-CopyTranslator是采用 GPL v2 协议许可的开源项目，使用完全免费。
+https://github.com/wang-borong/CopyTranslator/releases
 
-但是它的维护也是需要较大的精力的，这些工作目前主要由作者一人花费大量私人时间与精力完成😫。
+应用内更新检查读取：
 
-如果你希望支持这个项目长久持续开发下去并不断加入新功能，可以选择打赏❤️让我买杯咖啡☕恢复元气，更好地投入到开发当中。
+https://api.github.com/repos/wang-borong/CopyTranslator/releases/latest
 
-感谢所有支持CopyTranslator的小伙伴们。
+## 隐私说明
 
-<h4 style="text-align:center;">通过微信或支付宝扫码打赏</h4>
-<div style="text-align:center;">
-<div style="display:inline-block;">
-   <img width="300" src="images/wechat.jpg" alt="微信赞赏">
-   <p style="text-align:center;">微信赞赏</p>
-</div>
-
-   <div style="display:inline-block;">
-   <img width="300" src="images/alipay.jpg" alt="支付宝"> 
-   <p style="text-align:center;">支付宝</p>
-</div>
-</div>
-
+CopyTranslator 会监听剪贴板以实现本地翻译工作流，但翻译文本和 OCR 图片会发送给你选择的翻译引擎或 OCR 服务。发送敏感文本、截图或文档前，请先确认对应服务的隐私政策和你自己的使用权限。
 
 ## 开源协议
 
-代码采用GNU GENERAL PUBLIC LICENSE 2.0协议授权。请查阅[LICENSE](./LICENSE) 文件，获取更多信息。
+CopyTranslator 使用 GNU General Public License v2 授权。详情请查看 [LICENSE](LICENSE)。
 
+## 致谢
 
-
-
-
+本项目基于原 CopyTranslator 项目及其贡献者的长期工作。当前迁移优化版本的目标，是在保留核心工作流的基础上，用 Tauri 运行时、更新后的界面和新的翻译能力继续维护这个工具。
