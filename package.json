@@ -7,6 +7,7 @@
     "dev:tauri": "node scripts/dev-server.mjs",
     "build": "vite build",
     "preview": "vite preview",
+    "set-release-version": "node scripts/set-release-version.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

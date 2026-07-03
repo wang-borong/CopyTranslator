@@ -3,7 +3,7 @@
     <v-app style="height: 100%;" :style="appStyle">
       <v-app-bar color="primary" dense :height="titlebarHeight">
         <v-spacer style="height: 100%;">
-          <div class="dragableDiv"></div>
+          <div class="dragableDiv" data-tauri-drag-region></div>
         </v-spacer>
         <ActionButton
           icon="mdi-close"

@@ -10,6 +10,10 @@ import "@mdi/font/css/materialdesignicons.css";
 import "vuetify/styles";
 import { ColorMode } from "../common/types";
 
+type VuetifyInstance = ReturnType<typeof createVuetify>;
+
+let vuetifyInstance: VuetifyInstance | undefined;
+
 export function isDarkMode() {
   const colorMode: ColorMode = getConfigByKey("colorMode");
   switch (colorMode) {
@@ -26,8 +30,13 @@ export function isDarkMode() {
   }
 }
 
-export default () => {
-  const themes = {
+function getVuetifyThemeName() {
+  const colorMode: ColorMode = getConfigByKey("colorMode");
+  return colorMode === "auto" ? "system" : colorMode;
+}
+
+function getThemes() {
+  return {
     light: {
       colors: {
         primary: getConfigByKey("primaryColor")?.light || "#1976D2",
@@ -39,7 +48,36 @@ export default () => {
       },
     },
   };
+}
 
+export function applyThemeFromConfig() {
+  const theme = vuetifyInstance?.theme as any;
+  if (!theme) {
+    return;
+  }
+  const themes = getThemes();
+  const currentThemes = theme.themes.value;
+  theme.themes.value = {
+    ...currentThemes,
+    light: {
+      ...currentThemes.light,
+      colors: {
+        ...currentThemes.light.colors,
+        primary: themes.light.colors.primary,
+      },
+    },
+    dark: {
+      ...currentThemes.dark,
+      colors: {
+        ...currentThemes.dark.colors,
+        primary: themes.dark.colors.primary,
+      },
+    },
+  };
+  theme.change(getVuetifyThemeName());
+}
+
+export default () => {
   const vuetify = createVuetify({
     components,
     directives,
@@ -51,10 +89,11 @@ export default () => {
       },
     },
     theme: {
-      defaultTheme: isDarkMode() ? "dark" : "light",
-      themes,
+      defaultTheme: getVuetifyThemeName(),
+      themes: getThemes(),
     },
   });
+  vuetifyInstance = vuetify;
 
   const app = createApp(App);
   app.use(pinia);

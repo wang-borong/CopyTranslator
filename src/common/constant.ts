@@ -1,20 +1,26 @@
-import { osSpec } from "./env";
+const githubRepo = "https://github.com/wang-borong/CopyTranslator";
+const githubReleases = `${githubRepo}/releases`;
+
 const constants: { [key: string]: string } = {
   appName: "CopyTranslator",
   nickName: "知微",
   version: "12.1.0",
   stage: "stable",
-  changelogs: "https://copytranslator.github.io/changelogs/v12.html",
+  githubRepo,
+  githubReleases,
+  githubLatestReleaseApi:
+    "https://api.github.com/repos/wang-borong/CopyTranslator/releases/latest",
+  changelogs: githubReleases,
   wiki: "https://copytranslator.github.io/guide",
-  homepage: "https://copytranslator.github.io",
-  downloadPage: "https://copytranslator.github.io/guide/download.html",
-  allChangelogs: "https://copytranslator.github.io/metadata",
-  latest: `https://copytranslator.github.io/metadata/${osSpec.name}.json`,
-  manualDownloadLink: `https://copytranslator.github.io/download/${osSpec.name}.html`,
+  homepage: githubRepo,
+  downloadPage: githubReleases,
+  allChangelogs: githubReleases,
+  latest: `${githubReleases}/latest`,
+  manualDownloadLink: githubReleases,
 };
 constants[
   "currentChangelog"
-] = `${constants.allChangelogs}/${constants.version}.md`;
+] = `${constants.githubReleases}/tag/v${constants.version}`;
 const debug = false;
 if (debug && process.env.NODE_ENV !== "production") {
   for (const key of Object.keys(constants)) {
@@ -28,7 +34,7 @@ if (debug && process.env.NODE_ENV !== "production") {
 export function getChangelogURL(
   targetVersion: string = `v${constants.version}`
 ) {
-  return `${constants.allChangelogs}/${targetVersion.substring(1)}.md`;
+  return `${constants.githubReleases}/tag/${targetVersion}`;
 }
 
 const terms = ["v" + constants.version, constants.nickName];

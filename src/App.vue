@@ -1,6 +1,6 @@
 <template>
-  <v-app>
-    <v-main>
+  <v-app class="app-shell">
+    <v-main class="app-main">
       <router-view></router-view>
     </v-main>
     <v-snackbar v-model="toastShow" :timeout="3000" location="bottom">
@@ -31,6 +31,25 @@ onUnmounted(() => {
 </script>
 
 <style>
+html,
+body,
+#app {
+  background: transparent !important;
+}
+
+#app,
+.app-shell,
+.app-shell > .v-application__wrap,
+.app-main {
+  min-height: 100vh;
+}
+
+.app-shell.v-application,
+.app-shell > .v-application__wrap,
+.app-main {
+  background: transparent !important;
+}
+
 #app {
   -webkit-font-smoothing: antialiased;
   font-family: "Microsoft YaHei", Arial, Helvetica, sans-serif;

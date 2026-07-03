@@ -36,7 +36,10 @@
           @mouseover="penerate(true)"
           @mouseleave="penerate(false)"
         >
-          <div :class="{ dragableDiv: !base.config.value.penerate }"></div>
+          <div
+            :class="{ dragableDiv: !base.config.value.penerate }"
+            data-tauri-drag-region
+          ></div>
         </v-spacer>
         <v-menu location="top">
           <template v-slot:activator="{ props }">
@@ -83,6 +86,7 @@
             v-if="base.config.value.penerate"
             class="dragableDiv"
             style="display: flex;"
+            data-tauri-drag-region
           >
             <ActionButton
               icon="mdi-cursor-move"
@@ -378,6 +382,7 @@ onUnmounted(() => {
 
 <style>
 .window-container {
+  background: transparent;
   border-radius: var(--border-radius);
   overflow: hidden;
   height: 100vh;
@@ -391,6 +396,7 @@ onUnmounted(() => {
 }
 
 .window-container .v-application__wrap {
+  background: transparent !important;
   border-radius: var(--border-radius) !important;
 }
 

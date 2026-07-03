@@ -12,6 +12,8 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 
+const MIN_LINUX_WINDOW_OPACITY: f64 = 0.25;
+
 static LISTEN_CLIPBOARD: AtomicBool = AtomicBool::new(true);
 
 fn legacy_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -110,6 +112,28 @@ fn set_listen_clipboard(listen: bool) {
     // The clipboard monitor runs on a background thread. Release/acquire keeps
     // the user's latest listen state visible across that thread boundary.
     LISTEN_CLIPBOARD.store(listen, Ordering::Release);
+}
+
+#[tauri::command]
+fn set_window_opacity(window: tauri::Window, opacity: f64) -> Result<(), String> {
+    let opacity = if opacity.is_finite() { opacity } else { 1.0 };
+    let opacity = opacity.clamp(MIN_LINUX_WINDOW_OPACITY, 1.0);
+
+    #[cfg(target_os = "linux")]
+    {
+        use gtk::prelude::WidgetExt;
+
+        let gtk_window = window.gtk_window().map_err(|e| e.to_string())?;
+        gtk_window.set_opacity(opacity);
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = window;
+        let _ = opacity;
+    }
+
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -553,6 +577,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             set_listen_clipboard,
+            set_window_opacity,
             fetch_http_proxy,
             simulate_copy,
             simulate_paste,

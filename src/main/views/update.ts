@@ -97,28 +97,25 @@ export class UpdateChecker {
 
   checkTheGithubPages() {
     console.log("正在检查Github更新");
-    console.log(constants.latest);
-    this.get(constants.latest)
+    console.log(constants.githubLatestReleaseApi);
+    this.get(constants.githubLatestReleaseApi)
       .then((res) => res.data)
       .then((data) => {
         console.log("Github上最新版本为", JSON.stringify(data));
-        //这里的data.version是带了前缀v的
-        if (isLower(version, data.version)) {
-          this.get(getChangelogURL(data.version))
-            .then((res) => res.data)
-            .then((releaseNotes) => {
-              const updateInfo: UpdateInfo = {
-                releaseNotes,
-                releaseName: data.releaseName,
-                needCompile: true,
-                isWin: false,
-                manualLink: constants.manualDownloadLink,
-              };
-              this.postUpdateInfo(updateInfo);
-            })
-            .catch((e) => {
-              console.error("从Github获取最新版本更新日志失败");
-            });
+        const rawTagName = String(data.tag_name || "").trim();
+        if (!rawTagName) {
+          throw new Error("GitHub release tag is empty");
+        }
+        const tagName = rawTagName.startsWith("v") ? rawTagName : `v${rawTagName}`;
+        if (isLower(version, tagName)) {
+          const updateInfo: UpdateInfo = {
+            releaseNotes: data.body || data.html_url || "",
+            releaseName: data.name || tagName,
+            needCompile: true,
+            isWin: false,
+            manualLink: data.html_url || constants.githubReleases,
+          };
+          this.postUpdateInfo(updateInfo);
         } else {
           console.log("Github显示当前即为最新版本");
         }

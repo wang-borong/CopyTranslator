@@ -1,0 +1,155 @@
+name: Build and Release
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example 12.1.1 or v12.1.1"
+        required: true
+        type: string
+      draft:
+        description: "Create the GitHub release as a draft"
+        required: true
+        default: true
+        type: boolean
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check (${{ matrix.platform }})
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-22.04, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config \
+            wget
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check Tauri backend
+        working-directory: src-tauri
+        run: cargo check --locked
+
+  release:
+    name: Release (${{ matrix.platform }})
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-22.04, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: release-version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          raw="${INPUT_VERSION:-$GITHUB_REF_NAME}"
+          version="${raw#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $raw" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config \
+            wget
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Set release version
+        run: npm run set-release-version -- ${{ steps.release-version.outputs.version }}
+
+      - name: Build and upload Tauri bundles
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ steps.release-version.outputs.tag }}
+          releaseName: CopyTranslator ${{ steps.release-version.outputs.tag }}
+          releaseBody: |
+            CopyTranslator ${{ steps.release-version.outputs.tag }}
+
+            Downloads for Windows, macOS and Linux are attached below.
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft }}
+          prerelease: ${{ contains(steps.release-version.outputs.tag, 'alpha') || contains(steps.release-version.outputs.tag, 'beta') || contains(steps.release-version.outputs.tag, 'rc') || (github.event_name == 'workflow_dispatch' && inputs.prerelease) }}

@@ -7,9 +7,10 @@ import {
 } from "../common/types";
 import store, { observers } from "../store";
 import bus from "../common/event-bus";
-import createApp, { isDarkMode } from "./createApp";
+import createApp, { applyThemeFromConfig } from "./createApp";
 import router from "../router";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, type Color } from "@tauri-apps/api/window";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { invoke } from "@tauri-apps/api/core";
 const openUrl = (url: string) => {
   invoke("open_url", { url }).catch(err => {
@@ -19,7 +20,7 @@ const openUrl = (url: string) => {
 import { TranslateController } from "../main/translate-controller";
 import config from "../common/configuration";
 import logger, { initLog } from "../common/logger";
-import { constants, version } from "../common/constant";
+import { constants, isLower, version } from "../common/constant";
 import { RenController } from "../common/controller";
 import simulate from "../main/simulate";
 import { en, zh_cn } from "../common/locales";
@@ -56,6 +57,21 @@ const getDefaultLocale = () => {
 const getLocaleKey = (localeSetting: string) => {
   const key = localeSetting === "auto" ? getDefaultLocale() : localeSetting;
   return Object.prototype.hasOwnProperty.call(localeMap, key) ? key : "en";
+};
+
+type GithubRelease = {
+  tag_name?: string;
+  name?: string;
+  html_url?: string;
+};
+
+const MIN_NATIVE_WINDOW_OPACITY = 0.25;
+
+const clampNumber = (value: number, min: number, max: number) => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, value));
 };
 
 export class RendererController extends RenController {
@@ -104,6 +120,7 @@ export class RendererController extends RenController {
     }
 
     this.initApp();
+    this.applyNativeTransparency();
     bus.at("initialized");
 
     if (initError) {
@@ -112,6 +129,9 @@ export class RendererController extends RenController {
 
     try {
       await this.transCon.init();
+      if (this.get<boolean>("autoCheckUpdate")) {
+        this.checkUpdate(true);
+      }
     } catch (e) {
       console.error("Failed to initialize translation services:", formatError(e));
       this.toast(
@@ -185,6 +205,73 @@ export class RendererController extends RenController {
     task.catch((err) => {
       console.warn(`Failed to apply window setting ${action}:`, err);
     });
+  }
+
+  private applyNativeTransparency() {
+    const transparentBackground: Color = [0, 0, 0, 0];
+    const transparency = clampNumber(Number(this.get<number>("transparency") || 0), 0, 1);
+    const windowOpacity = clampNumber(
+      1 - transparency,
+      MIN_NATIVE_WINDOW_OPACITY,
+      1
+    );
+    Promise.allSettled([
+      getCurrentWindow().setBackgroundColor(transparentBackground),
+      getCurrentWebview().setBackgroundColor(transparentBackground),
+      invoke("set_window_opacity", { opacity: windowOpacity }),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const target = ["window", "webview", "opacity"][index] || "native";
+          console.warn(`Failed to apply transparent ${target} background:`, result.reason);
+        }
+      });
+    });
+  }
+
+  private normalizeReleaseTag(tag: string) {
+    const trimmed = tag.trim();
+    return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
+  }
+
+  private async checkUpdate(auto = false) {
+    if (!auto) {
+      this.toast(this.text("updateChecking", "正在检查更新"), true);
+    }
+    try {
+      const response = await fetch(constants.githubLatestReleaseApi, {
+        headers: {
+          Accept: "application/vnd.github+json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`GitHub release API returned ${response.status}`);
+      }
+      const release = (await response.json()) as GithubRelease;
+      const latestTag = this.normalizeReleaseTag(release.tag_name || "");
+      if (!latestTag || latestTag === "v") {
+        throw new Error("GitHub release tag is empty");
+      }
+      const currentTag = `v${constants.version}`;
+      if (isLower(currentTag, latestTag)) {
+        const releaseName = release.name || latestTag;
+        this.toast(
+          `${this.text("updateAvailable", "发现新版本")}: ${releaseName}`,
+          true
+        );
+        if (!auto) {
+          openUrl(release.html_url || constants.githubReleases);
+        }
+      } else if (!auto) {
+        this.toast(this.text("updateCurrent", "当前已是最新版本"), true);
+      }
+    } catch (err) {
+      console.error("Failed to check GitHub releases:", err);
+      this.toast(this.text("updateCheckFailed", "检查更新失败"), true);
+      if (!auto) {
+        openUrl(constants.githubReleases);
+      }
+    }
   }
 
   handle(identifier: Identifier, param: any = null): boolean {
@@ -272,6 +359,9 @@ export class RendererController extends RenController {
           query: typeof param === "string" ? { tab: param } : {},
         });
         break;
+      case "checkUpdate":
+        this.checkUpdate(false);
+        break;
       case "homepage":
         openUrl(constants.homepage);
         break;
@@ -301,17 +391,13 @@ export class RendererController extends RenController {
   postSet(identifier: Identifier, value: any): boolean {
     switch (identifier) {
       case "primaryColor":
-        if (this.app != undefined && this.app.config?.globalProperties?.$vuetify) {
-          const theme = this.app.config.globalProperties.$vuetify.theme;
-          theme.themes.light.colors.primary = value.light;
-          theme.themes.dark.colors.primary = value.dark;
-        }
-        break;
       case "colorMode":
-        if (this.app != undefined && this.app.config?.globalProperties?.$vuetify) {
-          const theme = this.app.config.globalProperties.$vuetify.theme;
-          theme.global.name.value = isDarkMode() ? "dark" : "light";
-        }
+        applyThemeFromConfig();
+        this.applyNativeTransparency();
+        break;
+      case "backgroundColor":
+      case "transparency":
+        this.applyNativeTransparency();
         break;
       case "localeSetting":
         this.updateLocale(String(value));

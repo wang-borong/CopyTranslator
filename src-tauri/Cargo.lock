@@ -608,6 +608,7 @@ version = "12.1.0"
 dependencies = [
  "arboard",
  "base64 0.22.1",
+ "gtk",
  "image",
  "log",
  "reqwest 0.12.28",
