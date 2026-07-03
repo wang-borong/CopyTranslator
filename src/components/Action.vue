@@ -263,6 +263,13 @@ const actionLayoutClass = computed(() => {
   transform: translateY(-50%);
   width: 3px;
 }
+.action-row-control {
+  display: grid;
+  grid-template-columns: minmax(104px, 1fr) minmax(112px, 148px);
+}
+.action-span-full .action-row-control {
+  grid-template-columns: minmax(136px, 180px) minmax(0, 1fr);
+}
 .action-label {
   flex: 1 1 auto;
   font-size: 13px;
@@ -271,9 +278,8 @@ const actionLayoutClass = computed(() => {
   text-align: left;
 }
 .action-control {
-  flex: 0 0 auto;
-  max-width: 240px;
-  min-width: 150px;
+  min-width: 0;
+  width: 100%;
 }
 .action-switch {
   margin: 0;
