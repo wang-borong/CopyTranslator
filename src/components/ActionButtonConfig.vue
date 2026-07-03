@@ -1,179 +1,195 @@
 <template>
-  <div style="height: 100%;">
+  <div style="height: 100%; display: flex; flex-direction: column; gap: 10px;">
     <Action identifier="actionSortPrompt"></Action>
-    <v-expansion-panels style="height: 100%;">
-      <draggable v-model="buttons" style="width: 100%;" :disabled="!drag">
-        <v-expansion-panel v-for="(button, index) in buttons" :key="index">
-          <v-expansion-panel-header style="text-align: left;">
-            <div style="display: flex;">
-              <v-icon style="margin-top: auto; margin-bottom: auto;">{{
-                button.icon
-              }}</v-icon>
-              <p
-                style="margin-top: auto; margin-bottom: auto; margin-left: 5px;"
-              >
-                {{ tooltipText(button) }}
-              </p>
+    <v-expansion-panels style="width: 100%;">
+      <v-expansion-panel v-for="(button, index) in buttons" :key="index">
+        <v-expansion-panel-title>
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 15px;">
+            <div style="display: flex; align-items: center;">
+              <v-icon>{{ button.icon || 'mdi-help-circle' }}</v-icon>
+              <span style="margin-left: 10px;">
+                {{ tooltipText(button) || trans["custom"] || "自定义" }}
+              </span>
             </div>
-          </v-expansion-panel-header>
-          <v-expansion-panel-content>
-            <div @mouseover="drag = false" @mouseleave="drag = true">
-              <div style="text-align: center;">
-                <SimpleButton @click="toSelectIcon">
-                  {{ trans["chooseIconPrompt"] }}
-                </SimpleButton>
-              </div>
-              <v-text-field
-                v-model="button.icon"
-                @change="update()"
-                label="icon"
-              ></v-text-field>
-              <v-select
-                v-model="button.left_click"
-                @change="update()"
-                label="left_click"
-                :items="actionCandidates"
-              ></v-select>
-              <v-select
-                v-model="button.right_click"
-                label="right_click"
-                :items="actionCandidates"
-                @change="update()"
-              ></v-select>
-              <v-text-field
-                v-model="button.tooltip"
-                @change="update()"
-                label="tooltip"
-              ></v-text-field>
-              <div style="text-align: center;">
-                <SimpleButton @click="remove(index)">{{
-                  trans["delete"]
-                }}</SimpleButton>
-              </div>
+            <div style="display: flex; gap: 5px;" @click.stop>
+              <v-btn size="x-small" icon variant="plain" :disabled="index === 0" @click="moveUp(index)">
+                <v-icon size="small">mdi-arrow-up</v-icon>
+              </v-btn>
+              <v-btn size="x-small" icon variant="plain" :disabled="index === buttons.length - 1" @click="moveDown(index)">
+                <v-icon size="small">mdi-arrow-down</v-icon>
+              </v-btn>
             </div>
-          </v-expansion-panel-content>
-        </v-expansion-panel>
-        <div style="text-align: center;">
-          <SimpleButton slot="footer" style="width: 100%;" @click="add">{{
-            trans["addNewActionButton"]
-          }}</SimpleButton>
-          <SimpleButton style="width: 100%;" @click="restore">{{
-            trans["restoreMultiDefault"]
-          }}</SimpleButton>
-        </div>
-      </draggable>
+          </div>
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <div>
+            <div style="text-align: center;">
+              <SimpleButton @click="toSelectIcon">
+                {{ trans["chooseIconPrompt"] }}
+              </SimpleButton>
+            </div>
+            <v-text-field
+              v-model="button.icon"
+              @update:model-value="update()"
+              label="icon"
+            ></v-text-field>
+            <v-select
+              v-model="button.left_click"
+              @update:model-value="update()"
+              label="left_click"
+              :items="actionCandidates"
+              item-title="text"
+              item-value="value"
+            ></v-select>
+            <v-select
+              v-model="button.right_click"
+              label="right_click"
+              :items="actionCandidates"
+              item-title="text"
+              item-value="value"
+              @update:model-value="update()"
+            ></v-select>
+            <v-text-field
+              v-model="button.tooltip"
+              @update:model-value="update()"
+              label="tooltip"
+            ></v-text-field>
+            <div style="text-align: center;">
+              <SimpleButton @click="remove(index)">{{
+                trans["delete"]
+              }}</SimpleButton>
+            </div>
+          </div>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
     </v-expansion-panels>
+    <div style="text-align: center; margin-top: 10px;">
+      <SimpleButton @click="add">{{
+        trans["addNewActionButton"]
+      }}</SimpleButton>
+      <SimpleButton @click="restore">{{
+        trans["restoreMultiDefault"]
+      }}</SimpleButton>
+    </div>
   </div>
 </template>
 
-<script lang="ts">
-import { ActionButton } from "../common/types";
-import { Component } from "vue-property-decorator";
-import draggable from "vuedraggable";
-import { shell } from "electron";
-import Base from "./Base.vue";
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue";
+import { useBase } from "./useBase";
 import SimpleButton from "./SimpleButton.vue";
 import Action from "./Action.vue";
+import { ActionButton } from "../common/types";
+import { invoke } from "@tauri-apps/api/core";
+const openUrl = (url: string) => {
+  invoke("open_url", { url }).catch(err => {
+    console.error("Failed to open URL:", err);
+  });
+};
 
 interface Option {
   value: string;
   text: string;
 }
 
-@Component({
-  components: {
-    draggable,
-    SimpleButton,
-    Action,
-  },
-})
-export default class ActionButtonConfig extends Base {
-  actionCandidates: Option[] = [];
-  drag: boolean = true;
+const base = useBase();
+const trans = base.trans;
 
-  getActionName(name: string) {
-    if (this.trans[name]) {
-      return this.trans[name];
+const actionCandidates = ref<Option[]>([]);
+
+const getActionName = (name: string) => {
+  if (trans.value[name]) {
+    return trans.value[name];
+  } else {
+    return name;
+  }
+};
+
+const tooltipText = (actionButton: ActionButton): string => {
+  if (actionButton.tooltip === undefined) {
+    let descs = [];
+    if (actionButton.left_click !== undefined) {
+      descs.push(
+        `${trans.value["left_click"] || "左击"}${getActionName(actionButton.left_click)}`
+      );
+    }
+    if (actionButton.right_click !== undefined) {
+      descs.push(
+        `${trans.value["right_click"] || "右击"}${getActionName(actionButton.right_click)}`
+      );
+    }
+    return descs.join("|");
+  } else {
+    if (trans.value[actionButton.tooltip] !== undefined) {
+      return trans.value[actionButton.tooltip];
     } else {
-      return name;
+      return actionButton.tooltip;
     }
   }
+};
 
-  tooltipText(actionButton: ActionButton): undefined | string {
-    if (actionButton.tooltip == undefined) {
-      let descs = [];
-      if (actionButton.left_click != undefined) {
-        descs.push(
-          `${this.trans["left_click"]}${this.getActionName(
-            actionButton.left_click
-          )}`
-        );
-      }
-      if (actionButton.right_click != undefined) {
-        descs.push(
-          `${this.trans["right_click"]}${this.getActionName(
-            actionButton.right_click
-          )}`
-        );
-      }
-      return descs.join("|");
-    } else {
-      if (this.trans[actionButton.tooltip] != undefined) {
-        return this.trans[actionButton.tooltip];
-      } else {
-        return actionButton.tooltip;
-      }
-    }
-  }
+onMounted(() => {
+  actionCandidates.value = [
+    ...(window as any).$controller.action.getKeys("allActions"),
+  ].map((x) => {
+    return { value: x, text: getText(x) };
+  });
+});
 
-  mounted() {
-    this.actionCandidates = [
-      ...this.$controller.action.getKeys("allActions"),
-    ].map((x) => {
-      return { value: x, text: this.getText(x) };
-    });
+const getText = (identifier: string) => {
+  if (trans.value[identifier]) {
+    return trans.value[identifier];
+  } else {
+    return identifier;
   }
+};
 
-  getText(identifier: string) {
-    if (this.trans[identifier]) {
-      return this.trans[identifier];
-    } else {
-      return identifier;
-    }
-  }
+const toSelectIcon = () => {
+  openUrl("https://pictogrammers.com/library/mdi/");
+};
 
-  toSelectIcon() {
-    shell.openExternal(
-      "https://vuetifyjs.com/zh-Hans/features/icon-fonts/#material-design56fe6807"
-    );
+const buttons = computed<ActionButton[]>({
+  get: () => base.config.value.actionButtons || [],
+  set: (newButtons) => {
+    base.callback("actionButtons", newButtons);
   }
+});
 
-  get buttons(): ActionButton[] {
-    return this.$store.state.config.actionButtons;
-  }
+const update = () => {
+  base.callback("actionButtons", buttons.value);
+};
 
-  set buttons(newButtons: ActionButton[]) {
-    this.callback("actionButtons", newButtons);
-  }
+const add = () => {
+  buttons.value.push({ icon: "mdi-help-circle" });
+  update();
+};
 
-  update() {
-    this.callback("actionButtons", this.buttons);
-  }
+const remove = (index: number) => {
+  buttons.value.splice(index, 1);
+  update();
+};
 
-  add() {
-    this.buttons.push({});
-    this.update();
-  }
+const moveUp = (index: number) => {
+  if (index === 0) return;
+  const list = [...buttons.value];
+  const item = list[index];
+  list[index] = list[index - 1];
+  list[index - 1] = item;
+  buttons.value = list;
+  update();
+};
 
-  remove(index: number) {
-    this.buttons.splice(index, 1);
-    this.update();
-  }
+const moveDown = (index: number) => {
+  if (index === buttons.value.length - 1) return;
+  const list = [...buttons.value];
+  const item = list[index];
+  list[index] = list[index + 1];
+  list[index + 1] = item;
+  buttons.value = list;
+  update();
+};
 
-  restore() {
-    this.callback("restoreDefault", "actionButtons");
-  }
-}
+const restore = () => {
+  base.callback("restoreDefault", "actionButtons");
+};
 </script>
-
-<style scoped></style>

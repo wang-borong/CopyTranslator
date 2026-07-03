@@ -1,5 +1,5 @@
-const activeWindow = require("active-win");
-import { Identifier } from "@/store";
+import { invoke } from "@tauri-apps/api/core";
+import { Identifier } from "@/common/types";
 import config from "../common/configuration";
 type BlackWhiteType = "listenClipboard" | "dragCopy";
 
@@ -28,12 +28,11 @@ function checkList(windowName: string, identifier: BlackWhiteType): boolean {
 export async function isValidWindow(
   identifier: BlackWhiteType
 ): Promise<boolean> {
-  return activeWindow()
-    .then((res: any) => {
-      if (!res) {
-        return false;
+  return invoke<string | null>("get_active_window_name")
+    .then((windowName) => {
+      if (!windowName) {
+        return true;
       }
-      const windowName = res.owner.name.toString();
       console.log(identifier, windowName);
       const windows = new Set(config.get<string[]>("activeWindows"));
       if (!windows.has(windowName)) {
@@ -43,7 +42,7 @@ export async function isValidWindow(
       return checkList(windowName, identifier);
     })
     .catch((err: any) => {
-      console.warn("activeWindow check failed, falling back to true:", err);
+      console.warn("active window check failed, falling back to true:", err);
       return true;
     });
 }

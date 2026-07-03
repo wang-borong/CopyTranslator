@@ -7,33 +7,33 @@
   >
     <div
       class="max"
-      @keyup.ctrl.13.capture="translate"
-      @keyup.ctrl.71.capture="google"
-      @keyup.ctrl.66.capture="baidu"
-      @keyup.ctrl.80.capture="command"
-      v-on:drop="dragTranslate"
+      @keyup.ctrl.enter.capture="translate"
+      @keyup.ctrl.g.capture="google"
+      @keyup.ctrl.b.capture="baidu"
+      @keyup.ctrl.p.capture="command"
+      @drop="dragTranslate"
     >
       <div
         v-if="(mode === 'normal'|| mode==='none')"
         class="focusPadding"
         style="height: 100%;"
         v-bind:style="focusStyle"
-        @contextmenu="openMenu('focusContext')"
+        @contextmenu.prevent="base.openMenu('focusContext')"
       >
         <div v-if="(config.focusSource && mode=='normal')">
           <div>原文：</div>
           <div class="focusText" id="focusSource" contenteditable="true">
-            {{ sharedResult.text }}
+            {{ sharedResult ? sharedResult.text : '' }}
           </div>
           <div>译文：</div>
           <div class="focusText" contenteditable="true">
-            {{ sharedResult.translation }}
+            {{ sharedResult ? sharedResult.translation : '' }}
           </div>
         </div>
         <textarea
           v-else
           class="focusText max focusPadding"
-          v-model="sharedResult.translation"
+          v-model="translationText"
           v-bind:style="focusStyle"
         ></textarea>
       </div>
@@ -53,6 +53,7 @@
         v-if="
           status !== 'Translating' &&
           mode === 'normal' &&
+          sharedResult &&
           sharedResult.engine !== '' &&
           sharedResult.engine !== currentEngine
         "
@@ -78,73 +79,83 @@
   </div>
 </template>
 
-<script lang="ts">
-import BaseView from "./BaseView.vue";
+<script setup lang="ts">
+import { computed } from "vue";
+import { useBaseView } from "./useBaseView";
 import DictResultPanel from "./DictResult.vue";
-import { Mixins, Ref, Component } from "vue-property-decorator";
 import DiffTextArea from "./DiffTextArea.vue";
 
-@Component({
-  components: {
-    DictResultPanel,
-    DiffTextArea,
-  },
-})
-export default class FocusMode extends Mixins(BaseView) {
-  dragTranslate(event: any) {
-    console.log(event.dataTransfer.getData("text/plain"));
-  }
+const base = useBaseView(() => getModifiedText());
+const status = base.status;
+const currentEngine = base.currentEngine;
+const mode = base.mode;
+const trans = base.trans;
+const config = base.config;
+const fontColor = base.fontColor;
+const contentPadding = base.contentPadding;
+const contentLineHeight = base.contentLineHeight;
+const toKeyan = base.toKeyan;
+const toStepfun = base.toStepfun;
+const resultSize = base.resultSize;
+const wheelHandler = base.wheelHandler;
+const keyboardFontHandler = base.keyboardFontHandler;
+const translate = base.translate;
+const google = base.google;
+const baidu = base.baidu;
+const command = base.command;
 
-  capture() {
-    // this.$proxy.capture();
-  }
+const sharedResult = base.sharedResult;
 
-  get focusStyle() {
-    return {
-      fontSize: this.resultSize.toString() + "px",
-      color: this.fontColor,
-    };
-  }
-
-  get focusContainerStyle() {
-    return {
-      "--content-padding": `${this.contentPadding}px`,
-      "--content-line-height": this.contentLineHeight.toString(),
-    };
-  }
-
-  getTextById(id: string) {
-    const e = document.getElementById(id) as HTMLElement;
-    const text = e.innerText;
-    return text;
-  }
-
-  getModifiedText() {
-    let text: string | undefined;
-    switch (this.mode) {
-      case "diff":
-        text = this.getTextById("diffText");
-        break;
-      case "dict":
-        text = this.getTextById("dictResultPanel");
-        break;
-      case "normal":
-        if (this.config.focusSource) {
-          text = this.getTextById("focusSource");
-        } else {
-          text = this.sharedResult.translation;
-        }
-        break;
-      case "none":
-        text = text = this.sharedResult.translation;
-        break;
+const translationText = computed({
+  get: () => base.sharedResult.value?.translation || "",
+  set: (val: string) => {
+    if (base.sharedResult.value) {
+      base.sharedResult.value.translation = val;
     }
-    if (text) {
-      this.$forceUpdate();
-    }
-    return text;
   }
-}
+});
+
+const dragTranslate = (event: DragEvent) => {
+  console.log(event.dataTransfer?.getData("text/plain"));
+};
+
+const focusStyle = computed(() => ({
+  fontSize: `${resultSize.value}px`,
+  color: fontColor.value,
+}));
+
+const focusContainerStyle = computed(() => ({
+  "--content-padding": `${contentPadding.value}px`,
+  "--content-line-height": contentLineHeight.value.toString(),
+}));
+
+const getTextById = (id: string) => {
+  const e = document.getElementById(id);
+  return e ? e.innerText : "";
+};
+
+const getModifiedText = () => {
+  let text: string | undefined;
+  switch (mode.value) {
+    case "diff":
+      text = getTextById("diffText");
+      break;
+    case "dict":
+      text = getTextById("dictResultPanel");
+      break;
+    case "normal":
+      if (config.value.focusSource) {
+        text = getTextById("focusSource");
+      } else {
+        text = translationText.value;
+      }
+      break;
+    case "none":
+      text = translationText.value;
+      break;
+  }
+  return text;
+};
 </script>
 
 <style scoped>

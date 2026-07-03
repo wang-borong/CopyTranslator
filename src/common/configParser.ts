@@ -7,7 +7,7 @@ import {
   getEnabledWithCustomIds,
 } from "./translate/translators";
 type Rules = Map<Identifier, Rule>; //类型别名
-import { readFileSync, writeFileSync } from "fs";
+import { invoke } from "@tauri-apps/api/core";
 import { env } from "../common/env";
 import bus from "./event-bus";
 
@@ -129,10 +129,19 @@ class ConfigParser {
     return result;
   }
 
-  load(): boolean {
+  private isTauriRuntime(): boolean {
+    return (
+      typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__)
+    );
+  }
+
+  async load(): Promise<boolean> {
     let status = true;
     try {
-      const values = JSON.parse(readFileSync(this.file) as any);
+      const content = this.isTauriRuntime()
+        ? ((await invoke("read_config")) as string)
+        : "{}";
+      const values = JSON.parse(content);
       if (!values["version"] || !compatible(values["version"])) {
         throw "version incompatible, configs will be reset"; //大版本冲突
       }
@@ -220,13 +229,19 @@ class ConfigParser {
   }
 
   getConfig2Save() {
-    const config2Save: { [key: string]: string } = store.state.config;
+    const config2Save: { [key: string]: any } = { ...store.state.config };
     this.notSavingKeys.map((key) => delete config2Save[key]); //去掉不需要保存的
     return config2Save;
   }
 
   save() {
-    writeFileSync(this.file, JSON.stringify(this.getConfig2Save(), null, 4));
+    if (!this.isTauriRuntime()) {
+      return;
+    }
+    const content = JSON.stringify(this.getConfig2Save(), null, 4);
+    invoke("write_config", { content }).catch(err => {
+      console.error("Failed to write config:", err);
+    });
     const now = Date.now();
     if (now > this.lastSave) {
       this.lastSave = now;

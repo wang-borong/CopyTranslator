@@ -115,7 +115,7 @@ export type GeneralTranslatorType =
 
 export const translatorTypes = flatten([normalTranslatorTypes]);
 
-export const recognizerTypes = ["baidu-ocr", "pp-ocr"] as const;
+export const recognizerTypes = ["baidu-ocr"] as const;
 export const categories = [
   "basic",
   "advance",

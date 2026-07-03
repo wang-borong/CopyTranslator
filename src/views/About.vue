@@ -17,18 +17,9 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component } from "vue-property-decorator";
+<script setup lang="ts">
 import { version } from "@/common/constant";
 import Action from "../components/Action.vue";
-import Base from "@/components/Base.vue";
-
-@Component({
-  components: { Action },
-})
-export default class DrogCopyConfig extends Base {
-  version = version;
-}
 </script>
 
 <style scoped>

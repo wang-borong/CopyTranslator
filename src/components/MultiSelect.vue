@@ -1,6 +1,6 @@
 <template>
   <div style="text-align: left;">
-    <p>{{ identifier }}</p>
+    <p>{{ trans[identifier] || identifier }}</p>
     <v-select
       v-model="value"
       :items="translatorTypes"
@@ -12,24 +12,24 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed } from "vue";
 import { translatorTypes, Identifier } from "../common/types";
-import { Prop, Component } from "vue-property-decorator";
-import Base from "./Base.vue";
+import { useBase } from "./useBase";
 
-@Component
-export default class MultiSelect extends Base {
-  @Prop({ default: undefined }) readonly identifier!: Identifier;
-  readonly translatorTypes = translatorTypes;
+const props = defineProps<{
+  identifier: Identifier;
+}>();
 
-  get value() {
-    return this.$store.state.config[this.identifier];
+const base = useBase();
+const trans = base.trans;
+
+const value = computed({
+  get: () => base.config.value[props.identifier] || [],
+  set: (val: any) => {
+    base.callback(props.identifier, val);
   }
-
-  set value(val) {
-    this.callback(this.identifier, val);
-  }
-}
+});
 </script>
 
 <style scoped></style>

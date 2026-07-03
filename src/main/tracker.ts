@@ -23,7 +23,7 @@ export class UniversalTracker {
   private syncInterval: number;
   private threshold: number;
   private buffer: Map<string, number>;
-  private timer: NodeJS.Timeout | null = null;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: TrackerConfig) {
     this.endpoint = config.endpoint;
@@ -39,8 +39,17 @@ export class UniversalTracker {
     // 启动定时任务
     this.timer = setInterval(() => this.flush(), this.syncInterval);
 
-    // 监听进程退出（仅限 Node 环境）
-    process.on("beforeExit", () => this.flush());
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
+        this.flush();
+      });
+      return;
+    }
+
+    const maybeProcess = globalThis.process as
+      | { on?: (event: string, listener: () => void) => void }
+      | undefined;
+    maybeProcess?.on?.("beforeExit", () => this.flush());
   }
 
   /**

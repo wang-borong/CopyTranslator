@@ -15,75 +15,75 @@
       </div>
     </div>
     <div class="options-restore" v-if="restoreButton">
-      <SimpleButton @click="callback('restoreMultiDefault', optionType)">
+      <SimpleButton @click="base.callback('restoreMultiDefault', optionType)">
         {{ trans["restoreMultiDefault"] }}
       </SimpleButton>
     </div>
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed } from "vue";
 import Action from "../components/Action.vue";
-import { Prop, Component, Vue } from "vue-property-decorator";
+import SimpleButton from "@/components/SimpleButton.vue";
+import { useBase } from "@/components/useBase";
 import {
   Identifier,
   MenuActionType,
   Category,
   ActionView,
 } from "../common/types";
-import BaseView from "@/components/BaseView.vue";
-import SimpleButton from "@/components/SimpleButton.vue";
 
-@Component({
-  components: {
-    Action,
-    SimpleButton,
-  },
-})
-export default class Options extends BaseView {
-  @Prop({ default: undefined }) readonly optionType!: MenuActionType | Category;
-  @Prop({ default: true }) readonly restoreButton!: boolean;
-  actionKeys: Identifier[] = this.$controller.action.getKeys(this.optionType);
+const props = defineProps<{
+  optionType: MenuActionType | Category;
+  restoreButton?: boolean;
+}>();
 
-  get groupedActions() {
-    const actions = this.actionKeys.map((id) =>
-      this.$controller.action.getAction(id)
-    );
-    const groups: Array<{
-      key: string;
-      title: string;
-      items: ActionView[];
-    }> = [];
-    let index = 0;
-    actions.forEach((action) => {
-      const title = action.layout?.group || "";
-      const last = groups[groups.length - 1];
-      if (!last || last.title !== title) {
-        groups.push({
-          key: `${title || "group"}-${index++}`,
-          title,
-          items: [action],
-        });
-      } else {
-        last.items.push(action);
-      }
-    });
-    return groups;
-  }
+const base = useBase();
+const trans = base.trans;
 
-  actionItemClass(action: ActionView) {
-    if (action.layout?.span && action.layout.span >= 1) {
-      return "options-item-full";
+const actionKeys = computed(() =>
+  (window as any).$controller.action.getKeys(props.optionType) as Identifier[]
+);
+
+const groupedActions = computed(() => {
+  const actions = actionKeys.value.map((id) =>
+    (window as any).$controller.action.getAction(id)
+  );
+  const groups: Array<{
+    key: string;
+    title: string;
+    items: ActionView[];
+  }> = [];
+  let index = 0;
+  actions.forEach((action) => {
+    const title = action.layout?.group || "";
+    const last = groups[groups.length - 1];
+    if (!last || last.title !== title) {
+      groups.push({
+        key: `${title || "group"}-${index++}`,
+        title,
+        items: [action],
+      });
+    } else {
+      last.items.push(action);
     }
-    if (
-      action.actionType === "prompt" ||
-      action.actionType === "multi_select"
-    ) {
-      return "options-item-full";
-    }
-    return "";
+  });
+  return groups;
+});
+
+const actionItemClass = (action: ActionView) => {
+  if (action.layout?.span && action.layout.span >= 1) {
+    return "options-item-full";
   }
-}
+  if (
+    action.actionType === "prompt" ||
+    action.actionType === "multi_select"
+  ) {
+    return "options-item-full";
+  }
+  return "";
+};
 </script>
 
 <style scoped>

@@ -5,6 +5,8 @@ import type {
 } from "./types";
 import config from "../configuration";
 import eventBus from "../event-bus";
+import { OpenAI } from "./openai";
+import { axios } from "./proxy";
 
 /**
  * 自定义翻译器管理器（基于供应商）
@@ -193,8 +195,6 @@ export class CustomTranslatorManager {
   private createTranslator(
     translatorConfig: CustomTranslatorConfig
   ): Translator {
-    const { OpenAI } = require("./openai");
-    const { axios } = require("./proxy");
     return new OpenAI({
       axios,
       config: {

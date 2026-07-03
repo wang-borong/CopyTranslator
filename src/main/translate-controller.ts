@@ -35,7 +35,6 @@ import { clipboard } from "./clipboard";
 import { MainController } from "../common/controller";
 import store from "@/store";
 import { recognizer } from "./ocr";
-import { pp_recognizer } from "./pp-ocr";
 import eventBus from "@/common/event-bus";
 import logger from "@/common/logger";
 import { getLanguageLocales } from "@/common/translate/locale";
@@ -100,7 +99,6 @@ class TranslateController {
   }
 
   async onExit() {
-    pp_recognizer.onExit();
     return this.translator.onExit();
   }
 
@@ -741,11 +739,6 @@ class TranslateController {
         if (!this.get<boolean>("enableOCR")) {
           return;
         }
-        if (pp_recognizer.enabled()) {
-          logger.toast("PP 检测到剪贴板图片");
-          pp_recognizer.recognize_clipboard();
-          return;
-        }
         if (recognizer.enabled()) {
           logger.toast("检测到剪贴板图片");
           recognizer.recognize(clipboard.readImage().toDataURL());
@@ -838,9 +831,6 @@ class TranslateController {
         return true; //在这里直接返回，不要设置状态
       case "baidu-ocr":
         recognizer.setUp(this.get("baidu-ocr"));
-        break;
-      case "pp-ocr":
-        pp_recognizer.setUp(this.get("pp-ocr"));
         break;
       default:
         return false;

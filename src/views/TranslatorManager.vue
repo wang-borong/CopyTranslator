@@ -1,13 +1,13 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
     <v-tabs v-model="activeTab" class="flex-grow-0">
-      <v-tab>{{ trans["translatorList"] || "翻译器列表" }}</v-tab>
-      <v-tab>{{ trans["translatorGroups"] || "分组设置" }}</v-tab>
+      <v-tab :value="0">{{ trans["translatorList"] || "翻译器列表" }}</v-tab>
+      <v-tab :value="1">{{ trans["translatorGroups"] || "分组设置" }}</v-tab>
     </v-tabs>
 
     <div style="flex: 1; overflow: hidden; position: relative;">
-      <v-tabs-items v-model="activeTab" style="height: 100%; overflow: auto;">
-        <v-tab-item style="min-height: 100%;">
+      <v-tabs-window v-model="activeTab" style="height: 100%; overflow: auto;">
+        <v-tabs-window-item :value="0" style="min-height: 100%;">
           <div class="pa-3">
             <div class="caption grey--text mb-3">
               {{ trans["enabledCount"] || "已启用" }}:
@@ -20,7 +20,7 @@
               <div class="caption" style="white-space: pre-line;">
                 {{
                   trans["translatorManagerTips"] ||
-                  "提示：\n1) 先在配置中填写密钥，未配置的翻译器无法启用。\n2) 批量启用只会启用已完成配置的翻译器。\n3) 缓存会加快切换引擎速度，但会占用更多资源。"
+                  "提示：\n1) 先在配置中填写密钥，未配置的翻译器无法启用。\n2) 批量启用只会启用已完成配置 of 翻译器。\n3) 缓存会加快切换引擎速度，但会占用更多资源。"
                 }}
               </div>
             </v-alert>
@@ -47,11 +47,11 @@
               class="translator-panels"
             >
               <v-expansion-panel
-                v-for="translator in translatorList"
+                v-for="(translator, idx) in translatorList"
                 :key="translator.id"
                 class="translator-panel"
               >
-                <v-expansion-panel-header class="translator-panel-header">
+                <v-expansion-panel-title class="translator-panel-header">
                   <template v-slot:default>
                     <div class="translator-row" @click.stop>
                       <div class="translator-cell translator-enable">
@@ -93,8 +93,8 @@
                       </div>
                     </div>
                   </template>
-                </v-expansion-panel-header>
-                <v-expansion-panel-content>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
                   <v-card
                     flat
                     class="pa-3"
@@ -102,7 +102,7 @@
                   >
                     <KeyConfig :identifier="translator.id"></KeyConfig>
                   </v-card>
-                </v-expansion-panel-content>
+                </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
 
@@ -141,9 +141,9 @@
               </v-card-text>
             </v-card>
           </div>
-        </v-tab-item>
+        </v-tabs-window-item>
 
-        <v-tab-item style="min-height: 100%;">
+        <v-tabs-window-item :value="1" style="min-height: 100%;">
           <div class="pa-3">
             <TranslatorGroupConfig
               configKey="translator-cache"
@@ -176,16 +176,17 @@
               "
             ></TranslatorGroupConfig>
           </div>
-        </v-tab-item>
-      </v-tabs-items>
+        </v-tabs-window-item>
+      </v-tabs-window>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Watch, Vue } from "vue-property-decorator";
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from "vue";
 import KeyConfig from "@/components/KeyConfig.vue";
 import TranslatorGroupConfig from "@/components/TranslatorGroupConfig.vue";
+import { useBase } from "@/components/useBase";
 import { Identifier } from "@/common/types";
 import { TranslatorNameResolver } from "@/common/translate/translator-name-resolver";
 import {
@@ -195,159 +196,138 @@ import {
 import config from "@/common/configuration";
 import eventBus from "@/common/event-bus";
 
-@Component({
-  components: {
-    KeyConfig,
-    TranslatorGroupConfig,
-  },
-})
-class TranslatorManager extends Vue {
-  translatorList: Array<{
-    id: string;
-    name: string;
-    enabled: boolean;
-    cache: boolean;
-  }> = [];
-  configVisibleIndexes: number[] = [];
-  activeTab = 0;
+const base = useBase();
+const trans = base.trans;
 
-  get trans() {
-    return this.$store.getters.locale;
+const activeTab = ref(0);
+const configVisibleIndexes = ref<number[]>([]);
+const translatorList = ref<Array<{
+  id: string;
+  name: string;
+  enabled: boolean;
+  cache: boolean;
+}>>([]);
+
+const availableTranslators = computed(() => {
+  return TranslatorNameResolver.getBuiltInTranslatorIds();
+});
+
+const enabledTranslators = computed(() => {
+  return base.config.value["translator-enabled"] || [];
+});
+
+const cacheTranslators = computed(() => {
+  return base.config.value["translator-cache"] || [];
+});
+
+const fallbackTranslator = computed({
+  get: () => base.config.value["fallbackTranslator"] || "baidu",
+  set: (val: string) => {
+    base.callback("fallbackTranslator", val);
   }
+});
 
-  get availableTranslators(): string[] {
-    return TranslatorNameResolver.getBuiltInTranslatorIds();
-  }
+const buildTranslatorList = () => {
+  translatorList.value = availableTranslators.value.map((id) => {
+    return {
+      id,
+      name: TranslatorNameResolver.getDisplayName(id, trans.value),
+      enabled: enabledTranslators.value.includes(id),
+      cache: cacheTranslators.value.includes(id),
+    };
+  });
+};
 
-  get enabledTranslators(): string[] {
-    return this.$store.state.config["translator-enabled"] || [];
-  }
+watch([enabledTranslators, cacheTranslators], () => {
+  buildTranslatorList();
+}, { deep: true });
 
-  get cacheTranslators(): string[] {
-    return this.$store.state.config["translator-cache"] || [];
-  }
+onMounted(() => {
+  buildTranslatorList();
+});
 
-  get fallbackTranslator(): string {
-    return this.$store.state.config["fallbackTranslator"] || "baidu";
-  }
-
-  set fallbackTranslator(val: string) {
-    this.callback("fallbackTranslator", val);
-  }
-
-  @Watch("enabledTranslators", { deep: true })
-  @Watch("cacheTranslators", { deep: true })
-  updateTranslatorList() {
-    this.buildTranslatorList();
-  }
-
-  mounted() {
-    this.buildTranslatorList();
-  }
-
-  buildTranslatorList() {
-    this.translatorList = this.availableTranslators.map((id) => {
-      return {
-        id,
-        name: this.getTranslatorName(id),
-        enabled: this.enabledTranslators.includes(id),
-        cache: this.cacheTranslators.includes(id),
-      };
-    });
-  }
-
-  getTranslatorName(translatorId: string): string {
-    return TranslatorNameResolver.getDisplayName(translatorId, this.trans);
-  }
-
-  updateEnabled(translatorId: string, enabled: boolean) {
-    if (enabled) {
-      this.applyEnabledTranslators([...this.enabledTranslators, translatorId]);
-    } else {
-      this.applyEnabledTranslators(
-        this.enabledTranslators.filter((id) => id !== translatorId)
-      );
-    }
-  }
-
-  isConfigComplete(translatorId: string): boolean {
-    return this.getConfigStatus(translatorId).canEnable;
-  }
-
-  getConfigStatus(translatorId: string) {
-    const id = translatorId as Identifier;
-    if (!config.has(id)) {
-      return { canSave: true, canEnable: true };
-    }
-    const value = this.$store.state.config[translatorId];
-    return config.checkStatus(id, value);
-  }
-
-  getCheckboxTitle(translatorId: string): string {
-    if (translatorId === "google" && this.enabledTranslators.length <= 1) {
-      return "至少需要启用一个翻译器";
-    }
-
-    const status = this.getConfigStatus(translatorId);
-    if (!status.canEnable) {
-      return (
-        status.enableReason || this.trans["configRequired"] || "请先配置翻译器"
-      );
-    }
-
-    return "";
-  }
-
-  updateCache(translatorId: string, cache: boolean) {
-    let newCache = [...this.cacheTranslators];
-    if (cache) {
-      if (!newCache.includes(translatorId)) {
-        newCache.push(translatorId);
-      }
-    } else {
-      newCache = newCache.filter((id) => id !== translatorId);
-    }
-    this.applyCacheTranslators(newCache);
-  }
-
-  applyEnabledTranslators(newEnabled: string[]) {
-    const custom = this.$store.state.config["customTranslators"] || [];
-    const allowed = new Set(
-      getAvailableTranslatorIds(this.availableTranslators, custom)
+const updateEnabled = (translatorId: string, enabled: boolean) => {
+  if (enabled) {
+    applyEnabledTranslators([...enabledTranslators.value, translatorId]);
+  } else {
+    applyEnabledTranslators(
+      enabledTranslators.value.filter((id) => id !== translatorId)
     );
-    const enabled = Array.from(new Set(newEnabled)).filter((id) =>
-      allowed.has(id)
+  }
+};
+
+const isConfigComplete = (translatorId: string): boolean => {
+  return getConfigStatus(translatorId).canEnable;
+};
+
+const getConfigStatus = (translatorId: string) => {
+  const id = translatorId as Identifier;
+  if (!config.has(id)) {
+    return { canSave: true, canEnable: true };
+  }
+  const value = base.config.value[translatorId];
+  return config.checkStatus(id, value);
+};
+
+const getCheckboxTitle = (translatorId: string): string => {
+  if (translatorId === "google" && enabledTranslators.value.length <= 1) {
+    return "至少需要启用一个翻译器";
+  }
+
+  const status = getConfigStatus(translatorId);
+  if (!status.canEnable) {
+    return (
+      status.enableReason || trans.value["configRequired"] || "请先配置翻译器"
     );
-    const activeSet = new Set(getEnabledWithCustomIds(enabled, custom));
-    const cache = this.cacheTranslators.filter((id) => activeSet.has(id));
-    const compare = (
-      this.$store.state.config["translator-compare"] || []
-    ).filter((id: string) => activeSet.has(id));
-    const double = (
-      this.$store.state.config["translator-double"] || []
-    ).filter((id: string) => activeSet.has(id));
-    this.callback("translator-enabled", enabled);
-    this.callback("translator-cache", cache);
-    this.callback("translator-compare", compare);
-    this.callback("translator-double", double);
-    if (enabled.length > 0 && !enabled.includes(this.fallbackTranslator)) {
-      this.callback("fallbackTranslator", enabled[0]);
+  }
+
+  return "";
+};
+
+const updateCache = (translatorId: string, cache: boolean) => {
+  let newCache = [...cacheTranslators.value];
+  if (cache) {
+    if (!newCache.includes(translatorId)) {
+      newCache.push(translatorId);
     }
+  } else {
+    newCache = newCache.filter((id) => id !== translatorId);
   }
+  applyCacheTranslators(newCache);
+};
 
-  applyCacheTranslators(newCache: string[]) {
-    const enabledSet = new Set(this.enabledTranslators);
-    const cache = Array.from(new Set(newCache)).filter((id) =>
-      enabledSet.has(id)
-    );
-    this.callback("translator-cache", cache);
+const applyEnabledTranslators = (newEnabled: string[]) => {
+  const custom = base.config.value["customTranslators"] || [];
+  const allowed = new Set(
+    getAvailableTranslatorIds(availableTranslators.value, custom)
+  );
+  const enabled = Array.from(new Set(newEnabled)).filter((id) =>
+    allowed.has(id)
+  );
+  const activeSet = new Set(getEnabledWithCustomIds(enabled, custom));
+  const cache = cacheTranslators.value.filter((id) => activeSet.has(id));
+  const compare = (
+    base.config.value["translator-compare"] || []
+  ).filter((id: string) => activeSet.has(id));
+  const double = (
+    base.config.value["translator-double"] || []
+  ).filter((id: string) => activeSet.has(id));
+  base.callback("translator-enabled", enabled);
+  base.callback("translator-cache", cache);
+  base.callback("translator-compare", compare);
+  base.callback("translator-double", double);
+  if (enabled.length > 0 && !enabled.includes(fallbackTranslator.value)) {
+    base.callback("fallbackTranslator", enabled[0]);
   }
+};
 
-  callback(...args: any[]) {
-    eventBus.at("dispatch", ...args);
-  }
-}
-export default TranslatorManager;
+const applyCacheTranslators = (newCache: string[]) => {
+  const enabledSet = new Set(enabledTranslators.value);
+  const cache = Array.from(new Set(newCache)).filter((id) =>
+    enabledSet.has(id)
+  );
+  base.callback("translator-cache", cache);
+};
 </script>
 
 <style scoped>
@@ -399,12 +379,6 @@ export default TranslatorManager;
   background-color: #f9f9f9;
 }
 
-.translator-panel-header::v-deep .v-expansion-panel-header__icon {
-  margin-left: 8px;
-  margin-right: 16px;
-  color: #757575;
-}
-
 .translator-header-cell {
   display: flex;
   align-items: center;
@@ -448,13 +422,5 @@ export default TranslatorManager;
 .translator-checkbox {
   margin: 0 !important;
   padding: 0 !important;
-}
-
-.translator-checkbox::v-deep .v-input__slot {
-  margin: 0 !important;
-}
-
-.translator-checkbox::v-deep .v-input--selection-controls__input {
-  margin: 0 !important;
 }
 </style>

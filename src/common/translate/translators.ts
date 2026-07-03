@@ -1,11 +1,27 @@
-import { Translator, Language } from "./types";
-export { Translator, Language };
+import { type Translator, Language } from "./types";
+export { type Translator, Language };
 import { TranslatorType } from "@/common/types";
 import { defaultTokens } from "./token";
 import { axios } from "./proxy";
 import config from "../configuration";
 import { customTranslatorManager } from "./custom-translators";
 import { detectLang } from "@opentranslate2/translator/dist/detect-lang";
+import { Baidu } from "@opentranslate/baidu";
+import { GoogleWrapper } from "./google-wrapper";
+import { keyan } from "./keyan";
+import { Youdao } from "@opentranslate2/youdao";
+import { Sogou } from "@opentranslate2/sogou";
+import { Caiyun } from "@opentranslate/caiyun";
+import { Aliyun } from "@opentranslate2/aliyun";
+import { Azure } from "@opentranslate2/azure";
+import { Deepl } from "@opentranslate2/deepl";
+import { Tencent } from "@opentranslate2/tencent";
+import { TencentSmart } from "@opentranslate2/tencent-smart";
+import { Yandex } from "@opentranslate2/yandex";
+import { VolcTranslator } from "@opentranslate2/volc";
+import { BaiduDomain } from "@opentranslate2/baidu-domain";
+import { Stepfun } from "./stepfun";
+import { Niu } from "@opentranslate2/niu";
 
 export { detectLang };
 
@@ -15,98 +31,84 @@ const creators = new Map<TranslatorType, (config: any) => Translator>([
   [
     "baidu",
     (c) => {
-      const { Baidu } = require("@opentranslate/baidu");
       return new Baidu({ axios, config: c });
     },
   ],
   [
     "google",
     (c) => {
-      const { GoogleWrapper } = require("./google-wrapper");
       return new GoogleWrapper({ axios, config: c });
     },
   ],
   [
     "keyan",
     () => {
-      const { keyan } = require("./keyan");
       return keyan;
     },
   ],
   [
     "youdao",
     (c) => {
-      const { Youdao } = require("@opentranslate2/youdao");
       return new Youdao({ axios, config: c });
     },
   ],
   [
     "sogou",
     (c) => {
-      const { Sogou } = require("@opentranslate2/sogou");
       return new Sogou({ axios, config: c });
     },
   ],
   [
     "caiyun",
     (c) => {
-      const { Caiyun } = require("@opentranslate/caiyun");
       return new Caiyun({ axios, config: c });
     },
   ],
   [
     "aliyun",
     (c) => {
-      const { Aliyun } = require("@opentranslate2/aliyun");
       return new Aliyun({ axios, config: c });
     },
   ],
   [
     "azure",
     (c) => {
-      const { Azure } = require("@opentranslate2/azure");
       return new Azure({ axios, config: c });
     },
   ],
   [
     "deepl",
     (c) => {
-      const { Deepl } = require("@opentranslate2/deepl");
       return new Deepl({ axios, config: c });
     },
   ],
   [
     "tencent",
     (c) => {
-      const { Tencent } = require("@opentranslate2/tencent");
       return new Tencent({ axios, config: c });
     },
   ],
   [
     "tencentsmart",
     (c) => {
-      const { TencentSmart } = require("@opentranslate2/tencent-smart");
       return new TencentSmart({ axios, config: c });
     },
   ],
   [
     "yandex",
     (c) => {
-      const { Yandex } = require("@opentranslate2/yandex");
       return new Yandex({ axios, config: c });
     },
   ],
   [
     "volc",
     (c) => {
-      const { VolcTranslator } = require("@opentranslate2/volc");
       return new VolcTranslator({ axios, config: c });
     },
   ],
   [
     "baidu-domain",
     (c) => {
-      const { BaiduDomain } = require("@opentranslate2/baidu-domain");
       return new BaiduDomain({
         axios,
         config: {
@@ -119,14 +121,12 @@ const creators = new Map<TranslatorType, (config: any) => Translator>([
   [
     "stepfun",
     (c) => {
-      const { Stepfun } = require("./stepfun");
       return new Stepfun({ axios, config: c });
     },
   ],
   [
     "niu",
     (c) => {
-      const { Niu } = require("@opentranslate2/niu");
       return new Niu({ axios, config: c });
     },
   ],
@@ -143,21 +143,6 @@ export function getTranslator(transType: TranslatorType | string): Translator {
 
   // 2. 检查内置翻译器
   if (creators.has(transType as TranslatorType)) {
-    // 渲染进程优化：如果是渲染进程，且是内置翻译器，直接返回轻量级对象，避免加载重型依赖
-    if (process.type === "renderer") {
-      return ({
-        name: transType,
-        translate: () =>
-          Promise.reject(
-            new Error(
-              "Translation engine should not be used in renderer process"
-            )
-          ),
-        detect: () => Promise.resolve("auto"),
-        getSupportLanguages: () => [],
-      } as unknown) as Translator;
-    }
-
     const creator = creators.get(transType as TranslatorType)!;
     // 尝试获取配置，优先使用 store 中的配置
     let cfg = defaultTokens.get(transType as TranslatorType);

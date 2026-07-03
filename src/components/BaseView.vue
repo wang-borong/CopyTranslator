@@ -4,7 +4,7 @@
 
 <script lang="ts">
 import { Component } from "vue-property-decorator";
-import { shell } from "electron";
+import { invoke } from "@tauri-apps/api/core";
 import eventBus from "@/common/event-bus";
 import logger from "@/common/logger";
 import Base from "./Base.vue";
@@ -12,14 +12,20 @@ import { SharedResult } from "@/common/translate/types";
 
 type Name = "result" | "source" | "diff" | "dict";
 
+const openUrl = (url: string) => {
+  invoke("open_url", { url }).catch((err) => {
+    console.error("Failed to open URL:", err);
+  });
+};
+
 @Component
 export default class BaseView extends Base {
   toKeyan() {
-    shell.openExternal("https://www.keyanyuedu.com/?channel=copytranslator");
+    openUrl("https://www.keyanyuedu.com/?channel=copytranslator");
   }
 
   toStepfun() {
-    shell.openExternal("https://www.stepfun.com/?channel=copytranslator");
+    openUrl("https://www.stepfun.com/?channel=copytranslator");
   }
 
   get currentEngine() {
@@ -124,15 +130,11 @@ export default class BaseView extends Base {
   }
 
   baidu() {
-    shell.openExternal(
-      `https://www.baidu.com/s?ie=utf-8&wd=${this.getModifiedText()}`
-    );
+    openUrl(`https://www.baidu.com/s?ie=utf-8&wd=${this.getModifiedText()}`);
   }
 
   google() {
-    shell.openExternal(
-      `https://www.google.com/search?q=${this.getModifiedText()}`
-    );
+    openUrl(`https://www.google.com/search?q=${this.getModifiedText()}`);
   }
   // 要支持translateInput必须要实现该方法
   getModifiedText(): string | undefined {

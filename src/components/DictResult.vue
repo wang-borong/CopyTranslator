@@ -4,10 +4,10 @@
     class="dict"
     v-bind:style="dictStyle"
     v-if="dictResult && dictResult.valid"
-    @contextmenu="openMenu('contrastContext')"
+    @contextmenu.prevent="base.openMenu('contrastContext')"
   >
     <p class="dictSrc noMargin">[{{ dictResult.words }}]</p>
-    <div v-if="dictResult.phonetics.length != 0">
+    <div v-if="dictResult.phonetics && dictResult.phonetics.length != 0">
       <p class="notation noMargin">Phonetic:</p>
       <span
         class="dictPhonetic noMargin"
@@ -17,7 +17,7 @@
         [{{ item.type }}]{{ item.value }} &nbsp;
       </span>
     </div>
-    <div v-if="dictResult.explains.length > 0">
+    <div v-if="dictResult.explains && dictResult.explains.length > 0">
       <p class="notation noMargin">Basic Explains:</p>
       <p
         class="dictExp noMargin"
@@ -30,20 +30,22 @@
   </div>
 </template>
 
-<script lang="ts">
-import BaseView from "./BaseView.vue";
-import { Mixins, Component } from "vue-property-decorator";
+<script setup lang="ts">
+import { computed } from "vue";
+import { useBaseView } from "./useBaseView";
 
-@Component
-export default class DictResult extends Mixins(BaseView) {
-  get dictStyle() {
-    return {
-      fontSize: this.dictSize.toString() + "px",
-      height: "100%;",
-      color: this.fontColor,
-    };
-  }
-}
+const base = useBaseView(() => undefined);
+const dictResult = base.dictResult;
+const fontColor = base.fontColor;
+const dictSize = base.dictSize;
+
+const dictStyle = computed(() => {
+  return {
+    fontSize: `${dictSize.value}px`,
+    height: "100%",
+    color: fontColor.value,
+  };
+});
 </script>
 
 <style scoped>

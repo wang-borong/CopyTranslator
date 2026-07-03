@@ -1,81 +1,53 @@
 <template>
-  <div style="text-align: left; overflow: auto; height: 100%;">
-    <Action :identifier="'enableOCR'"></Action>
-    <v-card flat class="mt-4">
-      <v-card-title class="subtitle-2 py-2">
-        {{ trans["ocrSettings"] || "OCR 配置" }}
-      </v-card-title>
-      <v-card-text class="pt-0 pb-2">
-        <v-expansion-panels multiple flat>
-          <v-expansion-panel v-for="ocr in ocrList" :key="ocr.id">
-            <v-expansion-panel-header>
-              <div class="d-flex align-center flex-grow-1 py-2">
-                <div class="flex-grow-1 subtitle-2">{{ ocr.name }}</div>
-              </div>
-            </v-expansion-panel-header>
-            <v-expansion-panel-content>
-              <v-card
-                flat
-                class="pa-3"
-                style="background: #fafafa; border-radius: 4px;"
-              >
-                <KeyConfig :identifier="ocr.id"></KeyConfig>
-              </v-card>
-            </v-expansion-panel-content>
-          </v-expansion-panel>
-        </v-expansion-panels>
-      </v-card-text>
-    </v-card>
+  <div class="ocr-config">
+    <Action identifier="enableOCR"></Action>
+    <v-alert type="info" variant="tonal" density="compact" class="mt-3 mb-3">
+      {{
+        trans["ocrTauriNote"] ||
+        "Tauri 版本使用百度 OCR REST API。截图后复制图片到剪贴板，或使用系统截图工具复制图片，即可触发 OCR 翻译。"
+      }}
+    </v-alert>
+    <v-expansion-panels variant="accordion">
+      <v-expansion-panel v-for="ocr in ocrList" :key="ocr.id" :value="ocr.id">
+        <v-expansion-panel-title>{{ ocr.name }}</v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <KeyConfig :identifier="ocr.id"></KeyConfig>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Vue } from "vue-property-decorator";
+<script setup lang="ts">
+import { computed } from "vue";
 import Action from "@/components/Action.vue";
 import KeyConfig from "@/components/KeyConfig.vue";
 import { recognizerTypes } from "@/common/types";
+import { useBase } from "@/components/useBase";
 
-@Component({
-  components: {
-    Action,
-    KeyConfig,
-  },
-})
-export default class OcrConfig extends Vue {
-  ocrList: Array<{ id: string; name: string }> = [];
+const base = useBase();
+const trans = base.trans;
 
-  get trans() {
-    return this.$store.getters.locale;
+const getRecognizerName = (recognizerId: string): string => {
+  switch (recognizerId) {
+    case "baidu-ocr":
+      return trans.value["baidu-ocr"] || "百度 OCR";
+    default:
+      return recognizerId;
   }
+};
 
-  get availableRecognizers(): string[] {
-    return (recognizerTypes as unknown) as string[];
-  }
-
-  mounted() {
-    this.buildOcrList();
-  }
-
-  buildOcrList() {
-    this.ocrList = this.availableRecognizers.map((id) => {
-      return {
-        id,
-        name: this.getRecognizerName(id),
-      };
-    });
-  }
-
-  getRecognizerName(recognizerId: string): string {
-    switch (recognizerId) {
-      case "baidu-ocr":
-        return this.trans["baidu-ocr"] || "百度 OCR";
-      case "pp-ocr":
-        return this.trans["pp-ocr"] || "PP-OCR";
-      default:
-        return recognizerId;
-    }
-  }
-}
+const ocrList = computed(() =>
+  recognizerTypes.map((id) => ({
+    id,
+    name: getRecognizerName(id),
+  }))
+);
 </script>
 
-<style scoped></style>
+<style scoped>
+.ocr-config {
+  max-width: 720px;
+  text-align: left;
+}
+</style>

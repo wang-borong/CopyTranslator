@@ -22,43 +22,44 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Prop } from "vue-property-decorator";
-import KeyConfig from "@/components/KeyConfig.vue";
-import { Identifier, Category, ActionView } from "../common/types";
+<script setup lang="ts">
+import { computed } from "vue";
+import { useBase } from "@/components/useBase";
 import Action from "../components/Action.vue";
 import SimpleButton from "@/components/SimpleButton.vue";
-import Base from "@/components/Base.vue";
+import { Category, ActionView } from "../common/types";
 
-@Component({
-  components: {
-    KeyConfig,
-    Action,
-    SimpleButton,
-  },
-})
-export default class SwitchGroups extends Base {
-  @Prop({ default: [] }) readonly cates!: Category[];
-  actionKeys: Array<Identifier[]> = this.cates.map((x) =>
-    this.$controller.action.getKeys(x as Category)
-  );
-  groupActions: Array<ActionView[]> = this.actionKeys.map((keys) =>
-    keys.map((id) => this.$controller.action.getAction(id))
-  );
+const props = defineProps<{
+  cates: Category[];
+}>();
 
-  actionItemClass(action: ActionView) {
-    if (action.layout?.span && action.layout.span >= 1) {
-      return "switch-item-full";
-    }
-    return "";
+const base = useBase();
+const trans = base.trans;
+
+const actionKeys = computed(() =>
+  props.cates.map((x) =>
+    (window as any).$controller.action.getKeys(x as Category)
+  )
+);
+
+const groupActions = computed<ActionView[][]>(() =>
+  actionKeys.value.map((keys) =>
+    keys.map((id) => (window as any).$controller.action.getAction(id))
+  )
+);
+
+const actionItemClass = (action: ActionView) => {
+  if (action.layout?.span && action.layout.span >= 1) {
+    return "switch-item-full";
   }
+  return "";
+};
 
-  restore() {
-    for (const cate of this.cates) {
-      this.callback("restoreMultiDefault", cate);
-    }
+const restore = () => {
+  for (const cate of props.cates) {
+    base.callback("restoreMultiDefault", cate);
   }
-}
+};
 </script>
 
 <style scoped>

@@ -1,6 +1,6 @@
 <template>
   <div class="window-container" :style="borderRadiusStyle">
-    <v-app v-bind:style="[appStyle, transparency]">
+    <v-app :style="[appStyle, transparency]">
       <v-dialog v-model="dialog">
         <Tips @close="dialog = false"></Tips>
       </v-dialog>
@@ -9,15 +9,15 @@
         :color="barColor"
         dark
         dense
-        :height="titlebarHeight"
-        :flat="config.penerate"
+        :height="base.titlebarHeight.value"
+        :flat="base.config.value.penerate"
         :class="{
           'rounded-top-bar': !drawer,
           'rounded-top-right-only': drawer,
         }"
       >
         <ActionButton
-          v-if="!config.penerate"
+          v-if="!base.config.value.penerate"
           left_click="drawer"
           right_click="settings"
           icon="mdi-menu"
@@ -28,7 +28,7 @@
             class="hidden-mobile"
             v-if="!isMini"
           >
-            {{ trans[layoutType] }}
+            {{ trans[base.layoutType.value] }}
           </p>
         </div>
         <v-spacer
@@ -36,24 +36,23 @@
           @mouseover="penerate(true)"
           @mouseleave="penerate(false)"
         >
-          <div :class="{ dragableDiv: !config.penerate }"></div>
+          <div :class="{ dragableDiv: !base.config.value.penerate }"></div>
         </v-spacer>
-        <v-menu top>
-          <template v-slot:activator="{ on }">
+        <v-menu location="top">
+          <template v-slot:activator="{ props }">
             <div
               style="display: flex;"
-              v-on="on"
-              @contextmenu="callback('listenClipboard')"
+              v-bind="props"
+              @contextmenu.prevent="base.callback('listenClipboard')"
             >
               <v-badge
                 dot
                 :color="badgeColor"
-                offset-y="pl/ml-5"
-                offset-x="pl/ml-1"
+                location="bottom right"
                 style="margin: auto;"
               >
                 <EngineButton
-                  :engine="currentEngine"
+                  :engine="base.currentEngine.value"
                   :valid="valid"
                   :enable="false"
                   :tooltip="trans['engineButton']"
@@ -81,7 +80,7 @@
         </v-menu>
         <div class="d-flex flex-row" style="height: 100%; padding-right: 1px;">
           <div
-            v-if="config.penerate"
+            v-if="base.config.value.penerate"
             class="dragableDiv"
             style="display: flex;"
           >
@@ -91,7 +90,7 @@
             ></ActionButton>
           </div>
           <ActionButton
-            v-if="config.penerate"
+            v-if="base.config.value.penerate"
             left_click="drawer"
             right_click="settings"
             icon="mdi-menu"
@@ -139,35 +138,192 @@
 
       <ContrastPanel
         :style="[area, transparentArea]"
-        v-bind:class="{ active: drawer, 'rounded-panel': true }"
-        @mouseover.native="penerate(true)"
-        @mouseleave.native="penerate(false)"
+        :class="{ active: drawer, 'rounded-panel': true }"
+        @mouseover="penerate(true)"
+        @mouseleave="penerate(false)"
       ></ContrastPanel>
     </v-app>
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue";
 import ActionButton from "../components/ActionButton.vue";
 import ContrastPanel from "../components/ContrastPanel.vue";
-import BaseView from "../components/BaseView.vue";
-import WindowController from "../components/WindowController.vue";
 import Action from "../components/Action.vue";
-import Component from "vue-class-component";
-import { Mixins } from "vue-property-decorator";
 import Tips from "@/components/Tips.vue";
+import EngineButton from "../components/EngineButton.vue";
+import { useBaseView } from "../components/useBaseView";
+import { useWindowResize } from "../components/useWindowResize";
 import {
   Identifier,
   ActionButton as ActionButtonType,
   abstractTranslatorTypes,
-  GeneralTranslatorType,
   hexToRgb,
   colorStatusMap,
 } from "../common/types";
-import EngineButton from "../components/EngineButton.vue";
-
-import { dictionaryTypes, DictionaryType } from "../common/dictionary/types";
+import { dictionaryTypes } from "../common/dictionary/types";
 import "@/css/shared-styles.css";
+
+const base = useBaseView(() => undefined);
+const { windowHeight, windowWidth } = useWindowResize();
+
+const dialog = ref(false);
+const marginBottom = ref(5);
+const trans = base.trans;
+const appStyle = base.appStyle;
+
+const actionKeys = computed(() =>
+  (window as any).$controller.action.getKeys("contrastPanel") as Identifier[]
+);
+
+const drawerActionClass = (actionId: Identifier) => {
+  const action = (window as any).$controller.action.getAction(actionId);
+  return action.layout?.stack ? "drawer-action-language" : "";
+};
+
+const drawerGroups = computed(() => {
+  const actions = actionKeys.value.map((id) =>
+    (window as any).$controller.action.getAction(id)
+  );
+  const groups: Array<{
+    key: string;
+    title: string;
+    items: Identifier[];
+  }> = [];
+  const groupMap = new Map<
+    string,
+    { key: string; title: string; items: Identifier[] }
+  >();
+  actions.forEach((action) => {
+    const title = action.layout?.group || "";
+    const key = title || "group";
+    if (!groupMap.has(key)) {
+      const group = { key, title, items: [action.id] };
+      groupMap.set(key, group);
+      groups.push(group);
+    } else {
+      groupMap.get(key)?.items.push(action.id);
+    }
+  });
+  return groups;
+});
+
+const valid = computed(() => {
+  return (
+    base.mode.value === "dict" &&
+    (base.config.value.contrastDict || base.layoutType.value === "focus")
+  );
+});
+
+const isMini = computed(() => base.config.value.transparency > 0);
+
+onMounted(() => {
+  if (!base.config.value.neverShowTips) dialog.value = true;
+});
+
+const nButton = computed(() => {
+  return Math.max(
+    1,
+    Math.floor(
+      (windowHeight.value - base.titlebarHeightVal.value) /
+        (base.titlebarHeightVal.value + marginBottom.value)
+    )
+  );
+});
+
+const customTranslators = computed<string[]>(() => base.config.value.customTranslators || []);
+
+const engines = computed(() => {
+  const translatorEngines = [
+    ...(base.config.value["translator-enabled"] || []),
+    ...abstractTranslatorTypes,
+    ...customTranslators.value,
+  ];
+  return base.mode.value === "dict" ? [...dictionaryTypes] : translatorEngines;
+});
+
+const restEngines = computed(() => {
+  return engines.value.filter((engine: any) => engine !== base.currentEngine.value);
+});
+
+const restEngineGroups = computed(() => {
+  return sliceArray(restEngines.value, nButton.value);
+});
+
+const engineButtonStyle = computed(() => ({
+  "margin-bottom": `${marginBottom.value}px`,
+}));
+
+const popupStyle = computed(() => {
+  const width = (base.titlebarHeightVal.value + 10) * restEngineGroups.value.length;
+  const margin = base.titlebarHeightVal.value / 2 + 5;
+  return { width: `${width}px`, "margin-top": `${margin}px` };
+});
+
+const actionButtons = computed<ActionButtonType[]>(() => base.config.value.actionButtons || []);
+
+const badgeColor = computed(() => colorStatusMap.get(base.status.value) || "grey");
+
+const barWidth = computed(() => base.config.value.drawer ? 200 : 0);
+
+const area = computed(() => ({
+  "margin-top": base.titlebarHeight.value,
+  "margin-left": `${barWidth.value}px`,
+  width: `calc(100vw - ${barWidth.value}px)`,
+  "font-family": base.config.value.contentFontFamily,
+  transition: "margin-left 0.18s ease, width 0.18s ease",
+}));
+
+const transparentArea = computed(() => ({}));
+
+const drawerStyle = computed(() => ({
+  "border-width": "2px 0px 2px 2px",
+  "border-style": "solid",
+  "border-color": barColor.value,
+  "--drawer-hover-bg": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.08)"
+    : "rgba(17, 24, 39, 0.06)",
+  "--drawer-group-color": base.isDarkTheme.value
+    ? "rgba(255, 255, 255, 0.52)"
+    : "rgba(17, 24, 39, 0.56)",
+}));
+
+const drawer = computed({
+  get: () => base.config.value.drawer,
+  set: (val: boolean) => base.set("drawer", val),
+});
+
+const backgroundColor = computed(() => {
+  const alpha = 1 - base.config.value.transparency;
+  const bgColor = base.isDarkTheme.value
+    ? base.config.value.backgroundColor?.dark || "#121212"
+    : base.config.value.backgroundColor?.light || "#ffffff";
+  const rgb = hexToRgb(bgColor);
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+});
+
+const barColor = computed(() => {
+  const alpha = 1 - base.config.value.transparency;
+  const bgColor = base.isDarkTheme.value
+    ? base.config.value.primaryColor?.dark || "#8E24AA"
+    : base.config.value.primaryColor?.light || "#8E24AA";
+  const rgb = hexToRgb(bgColor);
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+});
+
+const transparency = computed(() => ({
+  background: backgroundColor.value,
+}));
+
+const borderRadius = "10px";
+
+const borderRadiusStyle = computed(() => ({
+  "--border-radius": borderRadius,
+  "border-width": "2px",
+  "border-style": "solid",
+  "border-color": barColor.value,
+}));
 
 function sliceArray<T>(arr: T[], size: number) {
   var arr2 = [];
@@ -177,211 +333,24 @@ function sliceArray<T>(arr: T[], size: number) {
   return arr2;
 }
 
-@Component({
-  components: {
-    Action,
-    ContrastPanel,
-    EngineButton,
-    ActionButton,
-    Tips,
-  },
-})
-export default class Contrast extends Mixins(BaseView, WindowController) {
-  readonly routeName = "contrast";
-  actionKeys: Identifier[] = this.$controller.action.getKeys(
-    "contrastPanel"
-  ) as Identifier[];
-  drawerActionClass(actionId: Identifier) {
-    const action = this.$controller.action.getAction(actionId);
-    return action.layout?.stack ? "drawer-action-language" : "";
+const penerate = (value: boolean) => {
+  if (base.config.value.penerate) {
+    base.set("ignoreMouseEvents", value);
+  } else if (base.config.value.ignoreMouseEvents) {
+    base.set("ignoreMouseEvents", false);
   }
-  get drawerGroups() {
-    const actions = this.actionKeys.map((id) =>
-      this.$controller.action.getAction(id)
-    );
-    const groups: Array<{
-      key: string;
-      title: string;
-      items: Identifier[];
-    }> = [];
-    const groupMap = new Map<
-      string,
-      { key: string; title: string; items: Identifier[] }
-    >();
-    actions.forEach((action) => {
-      const title = action.layout?.group || "";
-      const key = title || "group";
-      if (!groupMap.has(key)) {
-        const group = { key, title, items: [action.id] };
-        groupMap.set(key, group);
-        groups.push(group);
-      } else {
-        groupMap.get(key)?.items.push(action.id);
-      }
-    });
-    return groups;
-  }
-
-  dialog: boolean = false;
-  marginBottom: number = 5;
-
-  get valid() {
-    return (
-      this.mode == "dict" &&
-      (this.config.contrastDict || this.layoutType === "focus")
-    );
-  }
-
-  penerate(value: boolean) {
-    if (this.config.penerate) {
-      //穿透，那就根据鼠标的情况进行设置
-      this.set("ignoreMouseEvents", value);
-    } else if (this.config.ignoreMouseEvents) {
-      //不穿透,但是此时却说要ignore，这就不对，要更新值
-      this.set("ignoreMouseEvents", false);
-    }
-  }
-
-  get isMini() {
-    return this.config.transparency > 0;
-  }
-
-  mounted() {
-    if (!this.config.neverShowTips) this.dialog = true;
-  }
-
-  get nButton() {
-    return Math.max(
-      1,
-      Math.floor(
-        (this.windowHeight - this.titlebarHeightVal) /
-          (this.titlebarHeightVal + this.marginBottom)
-      )
-    );
-  }
-
-  get customTranslators(): Array<GeneralTranslatorType | string> {
-    return this.config.customTranslators || [];
-  }
-
-  get engines(): Array<GeneralTranslatorType | DictionaryType | string> {
-    const translatorEngines: Array<GeneralTranslatorType | string> = [
-      ...this.config["translator-enabled"],
-      ...abstractTranslatorTypes,
-      // 添加所有自定义翻译器
-      ...this.customTranslators,
-    ];
-    return this.mode == "dict" ? [...dictionaryTypes] : translatorEngines;
-  }
-
-  get restEngines() {
-    return this.engines.filter((engine: any) => engine != this.currentEngine);
-  }
-
-  get restEngineGroups() {
-    return sliceArray(this.restEngines, this.nButton);
-  }
-
-  get engineButtonStyle() {
-    return { "margin-bottom": `${this.marginBottom}px` };
-  }
-
-  get popupStyle() {
-    const width = (this.titlebarHeightVal + 10) * this.restEngineGroups.length;
-    const margin = this.titlebarHeightVal / 2 + 5;
-    return { width: `${width}px`, "margin-top": `${margin}px` };
-  }
-
-  get actionButtons(): ActionButtonType[] {
-    return this.config.actionButtons;
-  }
-
-  get badgeColor() {
-    return colorStatusMap.get(this.status);
-  }
-
-  get barWidth(): number {
-    return this.drawer ? 200 : 0;
-  }
-
-  get area() {
-    return {
-      "margin-top": this.titlebarHeight,
-      width: `calc(100vw - ${this.barWidth.toString()}px)`,
-      "font-family": this.config.contentFontFamily,
-    };
-  }
-
-  get transparentArea() {
-    return {};
-  }
-
-  get drawerStyle() {
-    return {
-      "border-width": "2px 0px 2px 2px",
-      "border-style": "solid",
-      "border-color": this.barColor,
-    };
-  }
-
-  get drawer(): boolean {
-    return this.config.drawer;
-  }
-
-  set drawer(val: boolean) {
-    this.set("drawer", val);
-  }
-
-  get layoutType() {
-    return this.config.layoutType;
-  }
-
-  get backgroundColor() {
-    const alpha = 1 - this.config.transparency; //不透明度
-    const bgColor = this.$vuetify.theme.dark
-      ? this.config.backgroundColor.dark
-      : this.config.backgroundColor.light;
-    const rgb = hexToRgb(bgColor as string);
-    return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
-  }
-
-  get barColor() {
-    const alpha = 1 - this.config.transparency; //不透明度
-    const bgColor = this.$vuetify.theme.currentTheme.primary;
-    const rgb = hexToRgb(bgColor as string);
-    return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
-  }
-
-  get transparency() {
-    return {
-      background: this.backgroundColor,
-    };
-  }
-
-  // 统一的圆角大小设置 - 修改此处即可修改所有圆角
-  get borderRadius() {
-    return "10px";
-  }
-
-  get borderRadiusStyle() {
-    return {
-      "--border-radius": this.borderRadius,
-      "border-width": "2px",
-      "border-style": "solid",
-      "border-color": this.barColor,
-    };
-  }
-}
+};
 </script>
+
 <style>
 .window-container {
   border-radius: var(--border-radius);
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+  box-sizing: border-box;
 }
 
-/* v-app 圆角 */
 .window-container .v-application {
   border-radius: var(--border-radius) !important;
   overflow: hidden !important;
@@ -391,7 +360,6 @@ export default class Contrast extends Mixins(BaseView, WindowController) {
   border-radius: var(--border-radius) !important;
 }
 
-/* 顶部栏圆角 */
 .window-container .rounded-top-bar {
   border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
   overflow: hidden !important;
@@ -406,7 +374,6 @@ export default class Contrast extends Mixins(BaseView, WindowController) {
   border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
 }
 
-/* 顶部栏只有右上圆角 - 当抽屉打开时 */
 .window-container .rounded-top-right-only {
   border-radius: 0 var(--border-radius) 0 0 !important;
   overflow: hidden !important;
@@ -421,95 +388,41 @@ export default class Contrast extends Mixins(BaseView, WindowController) {
   border-radius: 0 var(--border-radius) 0 0 !important;
 }
 
-/* 左侧抽屉圆角 */
 .window-container .rounded-left-drawer {
   border-radius: var(--border-radius) 0 0 var(--border-radius) !important;
+  overflow: hidden !important;
 }
 
-/* 主面板圆角 - 当抽屉关闭时显示左下角圆角，始终显示右侧圆角 */
-.rounded-panel {
-  border-radius: 0 0 var(--border-radius) var(--border-radius) !important;
-}
-
-.rounded-panel.active {
-  border-radius: 0 0 var(--border-radius) 0 !important;
+.window-container .rounded-left-drawer .v-navigation-drawer__content {
+  overflow-y: auto;
 }
 
 .drawer-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px;
+  padding: 8px 8px 14px;
 }
-.drawer-group {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+.drawer-group + .drawer-group {
+  margin-top: 10px;
 }
+
 .drawer-group-title {
-  font-weight: 600;
-  margin-bottom: 4px;
-  text-align: left;
-}
-.drawer-group .action-label {
-  white-space: nowrap;
-}
-.drawer-group .action-control {
-  min-width: 96px;
-  max-width: 120px;
-}
-.drawer-action-language .action-row {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-}
-.drawer-action-language .action-label {
-  white-space: normal;
-}
-.drawer-action-language .action-control {
-  min-width: 0;
-  max-width: 100%;
-  width: 100%;
+  color: var(--drawer-group-color);
+  font-size: 12px;
+  line-height: 18px;
+  padding: 4px 8px;
 }
 
-.active {
-  margin-left: 200px;
+.window-container .rounded-left-drawer .action-row {
+  min-height: 40px;
+  border-radius: 6px;
+  padding: 4px 8px;
 }
 
-@media (max-width: 300px) {
-  .hidden-mobile {
-    display: none;
-  }
+.window-container .rounded-left-drawer .action-row:hover {
+  background: var(--drawer-hover-bg);
 }
 
-.dragableDiv {
-  -webkit-app-region: drag;
-  height: 100%;
-  width: 100%;
-}
-
-.noPad {
-  padding: 0px;
-}
-
-::-webkit-scrollbar {
-  display: none;
-}
-
-.noSelect {
-  user-select: none;
-  display: flex;
-  -webkit-app-region: drag;
-}
-
-.popup {
-  padding-top: 5px;
-  text-align: center;
-}
-
-.action-btn {
-  margin: auto;
+.window-container .rounded-left-drawer .action-label {
+  line-height: 18px;
 }
 </style>

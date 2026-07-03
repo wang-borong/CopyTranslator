@@ -1,37 +1,46 @@
-import {
-  ipcRenderer,
-  IpcRendererEvent,
-  ipcMain,
-  IpcMainEvent,
-  BrowserWindow,
-} from "electron";
-import { EventType, Identifier } from "./types";
+import { emit, listen } from "@tauri-apps/api/event";
+import busModule from "@gotoeasy/bus";
 
-type SimpleType = EventType | Identifier;
-const bus = require("@gotoeasy/bus");
-const id = "gbus";
-const isMain = process.type == "browser";
-const ipc = isMain ? ipcMain : ipcRenderer;
-type Event = IpcMainEvent | IpcRendererEvent | null;
-const ipcListenerMap = new Map<
-  string,
-  Map<Function, (...args: any[]) => void>
->();
+const bus = busModule as any;
 
-function listenWrapper(listener: Function) {
-  return (event: Event, ...args: any[]) => {
-    listener(...args);
-  };
-}
+const getChannel = (key: string) => `gbus-${key}`;
+const listenersMap = new Map<any, any>();
 
-function getListenerMap(key: string) {
-  if (!ipcListenerMap.has(key)) {
-    ipcListenerMap.set(key, new Map());
+const isTauriRuntime = () =>
+  typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__);
+
+const reportTauriEventError = (action: string, key: string, error: unknown) => {
+  console.warn(`[event-bus] ${action} failed for ${key}`, error);
+};
+
+const safeEmit = (key: string, payload: any[]) => {
+  if (!isTauriRuntime()) {
+    return;
   }
-  return ipcListenerMap.get(key)!;
-}
+  const channel = getChannel(key);
+  emit(channel, payload).catch((error) => {
+    reportTauriEventError("emit", key, error);
+  });
+};
 
-const getChannel = (key: string) => `${id}-${key}`;
+const safeListen = async (key: string, listener: Function) => {
+  if (!isTauriRuntime()) {
+    return () => {};
+  }
+  const channel = getChannel(key);
+  try {
+    return await listen(channel, (event) => {
+      if (Array.isArray(event.payload)) {
+        listener(...event.payload);
+      } else {
+        listener(event.payload);
+      }
+    });
+  } catch (error) {
+    reportTauriEventError("listen", key, error);
+    return () => {};
+  }
+};
 
 for (const methodName of ["on", "once", "at", "off"]) {
   const method = bus[methodName];
@@ -41,47 +50,31 @@ for (const methodName of ["on", "once", "at", "off"]) {
   };
 }
 
-bus.ion = (key: string, listener: Function) => {
-  const channel = getChannel(key);
-  const map = getListenerMap(key);
-  const wrapped = listenWrapper(listener);
-  map.set(listener, wrapped);
-  ipc.on(channel, wrapped);
+bus.ion = async (key: string, listener: Function) => {
+  const unlisten = await safeListen(key, listener);
+  listenersMap.set(listener, unlisten);
 };
 
-bus.ionce = (key: string, listener: Function) => {
-  const channel = getChannel(key);
-  const map = getListenerMap(key);
-  const wrapped = listenWrapper(listener);
-  map.set(listener, wrapped);
-  ipc.once(channel, (event: Event, ...args: any[]) => {
-    wrapped(event, ...args);
-    const stored = map.get(listener);
-    if (stored) {
-      map.delete(listener);
-    }
-  });
+bus.ionce = async (key: string, listener: Function) => {
+  const wrappedListener = (...args: any[]) => {
+    listener(...args);
+    unlisten();
+    listenersMap.delete(listener);
+  };
+  const unlisten = await safeListen(key, wrappedListener);
+  listenersMap.set(listener, unlisten);
 };
 
 bus.ioff = (key: string, listener: Function) => {
-  const channel = getChannel(key);
-  const map = getListenerMap(key);
-  const wrapped = map.get(listener);
-  if (wrapped) {
-    ipc.removeListener(channel, wrapped);
-    map.delete(listener);
+  const unlisten = listenersMap.get(listener);
+  if (unlisten) {
+    unlisten();
+    listenersMap.delete(listener);
   }
 };
 
 bus.iat = (key: string, ...args: any[]) => {
-  const channel = getChannel(key);
-  if (!isMain) {
-    ipcRenderer.send(channel, ...args);
-  } else {
-    BrowserWindow.getAllWindows().forEach((e) => {
-      e.webContents.send(channel, ...args);
-    });
-  }
+  safeEmit(key, args);
 };
 
 bus.gon = (key: string, listener: Function) => {
@@ -100,30 +93,8 @@ bus.goff = (key: string, listener: Function) => {
 };
 
 bus.gat = (key: string, ...args: any[]) => {
-  const channel = getChannel(key);
-  if (!isMain) {
-    ipcRenderer.send(channel, ...args);
-  } else {
-    BrowserWindow.getAllWindows().forEach((e) => {
-      e.webContents.send(channel, ...args);
-    });
-  }
+  safeEmit(key, args);
   bus.at(key, ...args);
 };
 
-interface GBus {
-  on: (key: SimpleType, listener: Function) => void;
-  once: (key: SimpleType, listener: Function) => void;
-  at: (key: SimpleType, ...args: any[]) => void;
-  off: (key: SimpleType, listener: Function) => void;
-  gon: (key: SimpleType, listener: Function) => void;
-  gonce: (key: SimpleType, listener: Function) => void;
-  goff: (key: SimpleType, listener: Function) => void;
-  gat: (key: SimpleType, ...args: any[]) => void;
-  ion: (key: SimpleType, listener: Function) => void;
-  ionce: (key: SimpleType, listener: Function) => void;
-  ioff: (key: SimpleType, listener: Function) => void;
-  iat: (key: SimpleType, ...args: any[]) => void;
-}
-
-export default bus as GBus;
+export default bus;

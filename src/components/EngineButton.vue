@@ -1,76 +1,66 @@
 <template>
-  <v-tooltip bottom open-delay="100" :disabled="!tooltipText">
-    <template v-slot:activator="{ on, attrs }">
+  <v-tooltip location="bottom" open-delay="100" :disabled="!tooltipText">
+    <template v-slot:activator="{ props }">
       <v-btn
         v-bind:class="[engineClass, 'engineBtnBase']"
-        v-bind="attrs"
-        v-on="on"
+        v-bind="props"
         @click="switchTranslator"
         color="white"
-        x-small
-        fab
-        :height="buttonSize"
-        :width="buttonSize"
+        icon
+        :style="{ height: buttonSize, width: buttonSize }"
       ></v-btn>
     </template>
     <span>{{ tooltipText }}</span>
   </v-tooltip>
 </template>
 
-<script lang="ts">
-import Vue from "vue";
-import Component, { mixins } from "vue-class-component";
-import Base from "./Base.vue";
-import "@/css/shared-styles.css";
+<script setup lang="ts">
+import { computed } from "vue";
+import { useBase } from "./useBase";
 import { TranslatorNameResolver } from "@/common/translate/translator-name-resolver";
+import "@/css/shared-styles.css";
 
-const AppProps = Vue.extend({
-  props: {
-    engine: String,
-    valid: Boolean,
-    tooltip: String,
-    enable: {
-      type: Boolean,
-      default: true,
-    },
-  },
+const props = withDefaults(defineProps<{
+  engine: string;
+  valid?: boolean;
+  tooltip?: string;
+  enable?: boolean;
+}>(), {
+  valid: false,
+  enable: true
 });
 
-@Component
-export default class EngineButton extends mixins(AppProps, Base) {
-  get engineClass() {
-    return TranslatorNameResolver.getEngineClass(this.engine);
+const base = useBase();
+const trans = base.trans;
+
+const engineClass = computed(() => {
+  return TranslatorNameResolver.getEngineClass(props.engine);
+});
+
+const buttonSize = computed(() => {
+  return `${base.titlebarHeightVal.value - 2}px`;
+});
+
+const tooltipText = computed(() => {
+  if (props.tooltip !== undefined) {
+    return props.tooltip;
   }
+  return TranslatorNameResolver.getDisplayName(props.engine, trans.value);
+});
 
-  get buttonSize() {
-    return `${this.titlebarHeightVal - 2}px`;
-  }
-
-  get tooltipText() {
-    if (this.tooltip != undefined) {
-      return this.tooltip;
-    }
-
-    // 使用统一的名称解析器
-    return TranslatorNameResolver.getDisplayName(this.engine, this.trans);
-  }
-
-  switchTranslator() {
-    if (!this.enable) {
-      return;
-    }
-    if (this.valid) {
-      this.callback("dictionaryType", this.engine);
+const switchTranslator = () => {
+  if (!props.enable) return;
+  if (props.valid) {
+    base.callback("dictionaryType", props.engine);
+  } else {
+    if (props.engine === "copytranslator") {
+      base.callback("multiSource", true);
     } else {
-      if (this.engine == "copytranslator") {
-        this.callback("multiSource", true); //设置多源翻译
-      } else {
-        this.callback("multiSource", false); //关闭多源翻译
-        this.callback("translatorType", this.engine);
-      }
+      base.callback("multiSource", false);
+      base.callback("translatorType", props.engine);
     }
   }
-}
+};
 </script>
 
 <style scoped>

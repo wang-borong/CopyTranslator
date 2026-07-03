@@ -16,66 +16,68 @@
     </v-carousel>
     <v-card-actions>
       <v-spacer></v-spacer>
-      <v-btn text color="primary" @click="neverShow">{{
+      <v-btn variant="text" color="primary" @click="neverShow">{{
         trans["neverShow"]
       }}</v-btn>
-      <v-btn text @click="close">{{ trans["close"] }}</v-btn>
+      <v-btn variant="text" @click="close">{{ trans["close"] }}</v-btn>
     </v-card-actions>
   </v-card>
 </template>
 
-<script lang="ts">
-import { Component } from "vue-property-decorator";
-import Base from "./Base.vue";
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+import { useBase } from "./useBase";
 
-@Component
-export default class Tips extends Base {
-  tips: string[] = [];
-  tipIndex: number = 0;
+const emit = defineEmits(["close"]);
 
-  getRandomInt(min: number, max: number): number {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
-  }
+const base = useBase();
+const trans = base.trans;
 
-  close() {
-    this.$emit("close");
-  }
+const tips = ref<string[]>([]);
+const tipIndex = ref(0);
 
-  neverShow() {
-    this.set("neverShowTips", true);
-    this.close();
-  }
+const getRandomInt = (min: number, max: number): number => {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min) + min);
+};
 
-  mounted() {
-    this.tips = [
-      this.trans["<tooltip>welcome"],
-      this.trans["<tip>v12Stepfun"],
-      this.trans["<tip>v12AiProviders"],
-      this.trans["<tip>v12TranslatorManager"],
-      this.trans["<tip>v12ContentStyle"],
-      this.trans["<tip>v12Ocr"],
-      this.trans["<tip>v12Proxy"],
-      this.trans["<tip>v12Portable"],
-      this.trans["textAdjustPrompt"],
-      this.trans["googlePrompt"],
-      this.trans["dragCopyTip"],
-      this.trans["<tip>snapshot"],
-      this.trans["<tip>focusSource"],
-      this.trans["<tip>splitRatio"],
-      this.trans["<tip>engineRight"],
-      this.trans["<tip>multiSourceEngines"],
-      this.trans["<tip>font"],
-      this.trans["<tip>themeColor"],
-      this.trans["<tip>transparency"],
-      this.trans["<tip>penerate"],
-      this.trans["<tip>titlebarHeight"],
-      this.trans["<tip>engineCache"],
-    ];
-    this.tipIndex = this.getRandomInt(0, this.tips.length);
-  }
-}
+const close = () => {
+  emit("close");
+};
+
+const neverShow = () => {
+  base.set("neverShowTips", true);
+  close();
+};
+
+onMounted(() => {
+  tips.value = [
+    trans.value["<tooltip>welcome"],
+    trans.value["<tip>v12Stepfun"],
+    trans.value["<tip>v12AiProviders"],
+    trans.value["<tip>v12TranslatorManager"],
+    trans.value["<tip>v12ContentStyle"],
+    trans.value["<tip>v12Ocr"],
+    trans.value["<tip>v12Proxy"],
+    trans.value["<tip>v12Portable"],
+    trans.value["textAdjustPrompt"],
+    trans.value["googlePrompt"],
+    trans.value["dragCopyTip"],
+    trans.value["<tip>snapshot"],
+    trans.value["<tip>focusSource"],
+    trans.value["<tip>splitRatio"],
+    trans.value["<tip>engineRight"],
+    trans.value["<tip>multiSourceEngines"],
+    trans.value["<tip>font"],
+    trans.value["<tip>themeColor"],
+    trans.value["<tip>transparency"],
+    trans.value["<tip>penerate"],
+    trans.value["<tip>titlebarHeight"],
+    trans.value["<tip>engineCache"],
+  ];
+  tipIndex.value = getRandomInt(0, tips.value.length);
+});
 </script>
 
 <style scoped>

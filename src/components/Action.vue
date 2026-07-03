@@ -1,13 +1,14 @@
 <template>
   <div :class="['action-item', actionLayoutClass]">
-    <v-tooltip v-if="action" bottom open-delay="100" :disabled="!tooltip">
-      <template v-slot:activator="{ on, attrs }">
-        <div class="actionStyle" v-bind="attrs" v-on="on">
+    <v-tooltip v-if="action" location="bottom" open-delay="100" :disabled="!tooltip">
+      <template v-slot:activator="{ props }">
+        <div class="actionStyle" v-bind="props">
           <div v-if="action.actionType === 'checkbox'" class="action-row">
             <span class="action-label">{{ trans[action.id] }}</span>
             <v-switch
               v-model="value"
               class="action-switch"
+              color="primary"
               hide-details
             ></v-switch>
           </div>
@@ -15,8 +16,8 @@
             v-else-if="action.id === 'newConfigSnapshot'"
             v-model="dialog"
           >
-            <template v-slot:activator="{ on, attrs }">
-              <SimpleButton v-bind="attrs" v-on="on" class="actionButton">
+            <template v-slot:activator="{ props: dialogProps }">
+              <SimpleButton v-bind="dialogProps" class="actionButton">
                 {{ trans[identifier] }}
               </SimpleButton>
             </template>
@@ -39,9 +40,9 @@
               </SimpleButton>
             </v-card>
           </v-dialog>
-          <v-menu offset-y v-else-if="action.actionType === 'param_normal'">
-            <template v-slot:activator="{ on, attrs }">
-              <SimpleButton v-bind="attrs" v-on="on" class="actionButton">
+          <v-menu v-else-if="action.actionType === 'param_normal'">
+            <template v-slot:activator="{ props: menuProps }">
+              <SimpleButton v-bind="menuProps" class="actionButton">
                 {{ trans[action.id] }}
               </SimpleButton>
             </template>
@@ -56,8 +57,8 @@
             </v-list>
           </v-menu>
           <v-dialog v-else-if="action.actionType == 'color_picker'">
-            <template v-slot:activator="{ on, attrs }">
-              <SimpleButton v-bind="attrs" v-on="on" class="actionButton">
+            <template v-slot:activator="{ props: pickerProps }">
+              <SimpleButton v-bind="pickerProps" class="actionButton">
                 <span class="action-button-content">
                   <span>{{ trans[action.id] }}</span>
                   <span
@@ -70,7 +71,6 @@
             <v-color-picker
               v-model="color"
               flat
-              :swatches="swatches"
               show-swatches
               style="margin: 10px auto;"
             ></v-color-picker>
@@ -100,7 +100,7 @@
             <v-select
               v-model="command"
               :items="action.submenu"
-              item-text="label"
+              item-title="label"
               item-value="id"
               class="action-control"
               dense
@@ -120,104 +120,81 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue";
+import { useBase } from "./useBase";
+import MultiSelect from "./MultiSelect.vue";
+import SimpleButton from "./SimpleButton.vue";
+import bus from "../common/event-bus";
 import {
-  Identifier,
-  compose,
-  ActionView,
   swatches,
   snapshotNameRules,
   isValidSnapshotName,
 } from "../common/types";
-import { Prop, Component } from "vue-property-decorator";
-import MultiSelect from "./MultiSelect.vue";
-import bus from "../common/event-bus";
-import Base from "@/components/Base.vue";
-import SimpleButton from "./SimpleButton.vue";
-import { ColorConfig } from "@/common/rule";
 
-@Component({
-  components: { MultiSelect, SimpleButton },
-})
-export default class Action extends Base {
-  @Prop({ default: undefined }) readonly identifier!: Identifier;
-  action: ActionView = this.$controller.action.getAction(this.identifier);
+const props = defineProps<{
+  identifier: any;
+}>();
 
-  swatches = swatches; //调色盘的预定义颜色
-  dialog: boolean = false;
+const base = useBase();
+const trans = base.trans;
+const callback = base.callback;
 
-  text: string = "";
+const action = ref((window as any).$controller.action.getAction(props.identifier));
 
-  rules = snapshotNameRules;
+const dialog = ref(false);
+const text = ref("");
+const rules = snapshotNameRules;
 
-  get invalidSnapshotName() {
-    return !isValidSnapshotName(this.text);
+const invalidSnapshotName = computed(() => !isValidSnapshotName(text.value));
+
+const tooltip = computed(() => {
+  if (!action.value || action.value.actionType === "prompt") return undefined;
+  return base.trans.value[`<tooltip>${action.value.id}`];
+});
+
+const command = computed({
+  get: () => {
+    return `${props.identifier}-${value.value}`;
+  },
+  set: (cmd: string) => {
+    base.callback(cmd);
   }
+});
 
-  get tooltip(): undefined | string {
-    if (!this.action || this.action.actionType === "prompt") {
-      return undefined;
-    }
-    const tp = this.trans[`<tooltip>${this.action.id}`];
-    return tp;
+const value = computed({
+  get: () => base.config.value[props.identifier],
+  set: (val: any) => {
+    base.callback(props.identifier, val);
   }
+});
 
-  get command() {
-    return compose([this.identifier, this.value.toString()]);
+const color = computed({
+  get: () => {
+    const col = value.value || { light: "#000000", dark: "#ffffff" };
+    return col.light;
+  },
+  set: (val: string) => {
+    base.callback(props.identifier, { ...value.value, light: val, dark: val });
   }
+});
 
-  set command(cmd) {
-    this.callback(cmd);
-  }
+const sync = () => {
+  action.value = (window as any).$controller.action.getAction(props.identifier);
+};
 
-  get value() {
-    return this.$store.state.config[this.identifier];
+onMounted(() => {
+  if (action.value && ["submenu", "param_normal"].includes(action.value.actionType)) {
+    bus.gon(props.identifier, sync);
   }
+});
 
-  set value(val) {
-    this.callback(this.identifier, val);
-  }
-
-  get color() {
-    const color = this.value as ColorConfig;
-    if (this.$vuetify.theme.dark) {
-      return color.dark;
-    } else {
-      return color.light;
-    }
-  }
-
-  set color(val) {
-    if (this.$vuetify.theme.dark) {
-      this.callback(this.identifier, { ...this.value, dark: val });
-    } else {
-      this.callback(this.identifier, { ...this.value, light: val });
-    }
-  }
-
-  async sync() {
-    this.action = this.$controller.action.getAction(this.identifier);
-  }
-
-  mounted() {
-    if (["submenu", "param_normal"].includes(this.action.actionType)) {
-      bus.gon(this.identifier, this.sync);
-    }
-  }
-
-  get actionLayoutClass() {
-    if (!this.action) {
-      return "";
-    }
-    if (["prompt", "multi_select"].includes(this.action.actionType)) {
-      return "action-span-full";
-    }
-    if (this.action.layout?.span && this.action.layout.span >= 1) {
-      return "action-span-full";
-    }
-    return "";
-  }
-}
+const actionLayoutClass = computed(() => {
+  if (!action.value) return "";
+  if (["prompt", "multi_select"].includes(action.value.actionType)) return "action-span-full";
+  if (action.value.layout?.span && action.value.layout.span >= 1) return "action-span-full";
+  return "";
+});
 </script>
 
 <style scoped>
@@ -252,7 +229,7 @@ export default class Action extends Base {
 .action-switch {
   margin: 0;
 }
-.actionButton >>> .defaultBtn {
+.actionButton :deep(.defaultBtn) {
   width: 100%;
   min-width: 0;
 }
@@ -267,26 +244,8 @@ export default class Action extends Base {
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.2);
 }
-.myswitch {
-  margin-top: 1px;
-  margin-left: 5px;
-  margin-right: 5px;
-}
-.myswitch >>> .v-messages {
-  min-height: 0px;
-}
-.myswitch >>> .v-input__slot {
-  margin-bottom: 1px !important;
-}
-.myswitch >>> .v-select__selection--comma {
-  margin-bottom: 0px;
-  min-height: 20px;
-}
 .pStyle {
   margin-bottom: 4px;
   text-align: left;
-}
-.mytext >>> .v-input__slot {
-  margin-bottom: 0px !important;
 }
 </style>

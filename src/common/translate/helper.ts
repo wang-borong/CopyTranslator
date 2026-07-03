@@ -4,6 +4,7 @@ import sum from "lodash.sum";
 import trim from "lodash.trim";
 import trimstart from "lodash.trimstart";
 import { CopyTranslateResult } from "./types";
+import tokenizer from "sbd";
 
 export const chnEnds = /[？。！]/g;
 export const engEnds = /[?.!]/g;
@@ -11,7 +12,6 @@ export const chnBreaks = /[？。！\n]/g;
 export const engBreaks = /[?.!\n]/g;
 const chineseStyles = ["zh-CN", "zh-TW", "ja", "ko"];
 
-const tokenizer = require("sbd");
 export function notEnglish(destCode: string) {
   return chineseStyles.includes(destCode);
 }

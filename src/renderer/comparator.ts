@@ -1,6 +1,6 @@
 import { ResultBuffer, SharedResult } from "@/common/translate/types";
 import { getConfigByKey } from "@/store";
-const Diff = require("diff");
+import { diffChars, diffWords } from "diff";
 
 export type CompareResult = {
   [key: string]: any;
@@ -33,7 +33,7 @@ function compare(anchorResult: SharedResult, targetResult: SharedResult) {
     anchorParas = [anchorResult.translation];
     targetParas = [targetResult.translation];
   }
-  const diffFunc = anchorResult.chineseStyle ? Diff.diffChars : Diff.diffWords; //chinese style的话，是逐个字符比较
+  const diffFunc = anchorResult.chineseStyle ? diffChars : diffWords; //chinese style的话，是逐个字符比较
   for (let i = 0; i < anchorParas.length; i++) {
     let diffParts = diffFunc(anchorParas[i], targetParas[i]);
     diffParts = diffParts.filter((p: any) => !p.removed);

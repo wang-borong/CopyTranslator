@@ -1,10 +1,7 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
+import { createRouter, createWebHashHistory } from "vue-router";
 
 const Contrast = () => import("@/views/Contrast.vue");
 const Settings = () => import("@/views/Settings.vue");
-
-Vue.use(VueRouter);
 
 const routes = [
   {
@@ -23,9 +20,8 @@ const routes = [
   },
 ];
 
-const router = new VueRouter({
-  mode: "hash",
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHashHistory(),
   routes,
 });
 

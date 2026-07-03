@@ -1,29 +1,18 @@
-import { osType } from "@/common/env";
-import { exec } from "child_process";
+import { invoke } from "@tauri-apps/api/core";
 
 async function simulateCopy() {
   try {
-    const { keyboard, Key } = require("@nut-tree/nut-js");
-    const modifier = osType == "Darwin" ? Key.LeftSuper : Key.LeftControl;
-    await keyboard.pressKey(modifier, Key.C);
-    await keyboard.releaseKey(modifier, Key.C);
+    await invoke("simulate_copy");
   } catch (e) {
-    if (osType === "Linux") {
-      exec("xdotool key ctrl+c", () => {});
-    }
+    console.error("Failed to simulate copy:", e);
   }
 }
 
 async function simulatePaste() {
   try {
-    const { keyboard, Key } = require("@nut-tree/nut-js");
-    const modifier = osType == "Darwin" ? Key.LeftSuper : Key.LeftControl;
-    await keyboard.pressKey(modifier, Key.V);
-    await keyboard.releaseKey(modifier, Key.V);
+    await invoke("simulate_paste");
   } catch (e) {
-    if (osType === "Linux") {
-      exec("xdotool key ctrl+v", () => {});
-    }
+    console.error("Failed to simulate paste:", e);
   }
 }
 

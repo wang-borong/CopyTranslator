@@ -1,92 +1,113 @@
-import Vue from "vue";
-import Vuex from "vuex";
-const { createSharedMutations } = require("vuex-electron");
-import { Identifier } from "./plugins/types";
-import { updateViewPlugin, observePlugin, initState } from "./plugins";
-export * from "./plugins";
-import { registerLocale } from "./plugins/l10n";
+import { createPinia, defineStore } from "pinia";
 import { emptySharedResult } from "@/common/translate/types";
 import { emptyDictResult } from "@/common/dictionary/types";
+import { zh_cn, en } from "@/common/locales";
 
-Vue.use(Vuex);
+export const pinia = createPinia();
 
-const plugins = [
-  registerLocale,
-  initState,
-  createSharedMutations(),
-  observePlugin,
-  updateViewPlugin,
-];
+function toLocaleObject(locale: any) {
+  if (locale instanceof Map) {
+    return Object.fromEntries(locale);
+  }
+  return locale || {};
+}
 
-// renderer在config里存放多层的对象，可能会出现丢失的情况，尽量不要这样子做，应该像Languages那样
-const store = new Vuex.Store({
-  state: {
+export const useAppStore = defineStore("app", {
+  state: () => ({
     status: "None",
     sharedResult: emptySharedResult(),
     dictResult: emptyDictResult(),
-    config: {},
-    languages: { sources: [], targets: [] },
-    resultBuffer: {},
-  },
-  mutations: {
-    setShared(state, sharedResult) {
-      state.sharedResult = sharedResult;
+    config: {} as any,
+    locale: toLocaleObject(zh_cn),
+    localeSetting: "zh-CN",
+    locales: [
+      { lang: "zh-CN", localeName: zh_cn.get("localeName") || "简体中文" },
+      { lang: "en", localeName: en.get("localeName") || "English" },
+    ],
+    languages: { sources: [] as string[], targets: [] as string[] },
+    resultBuffer: {} as any,
+  }),
+  actions: {
+    setShared(sharedResult: any) {
+      this.sharedResult = sharedResult;
     },
-    setDictResult(state, dictResult) {
-      state.dictResult = dictResult;
+    setDictResult(dictResult: any) {
+      this.dictResult = dictResult;
     },
-    setStatus(state, status) {
-      state.status = status;
+    setStatus(status: any) {
+      this.status = status;
     },
-    setLanguages(state, languages) {
-      Vue.set(state, "languages", languages);
+    setLanguages(languages: any) {
+      this.languages = languages;
     },
-    setResultBuffer(state, resultBuffer) {
-      Vue.set(state, "resultBuffer", resultBuffer);
+    setResultBuffer(resultBuffer: any) {
+      this.resultBuffer = resultBuffer;
     },
-    setConfig(state, config) {
-      Vue.set(state, "config", config);
+    setConfig(config: any) {
+      this.config = config;
     },
-    updateConfig(state, config) {
+    updateConfig(config: any) {
       for (const key of Object.keys(config)) {
-        Vue.set(state.config, key, config[key]);
+        this.config[key] = config[key];
       }
     },
-  },
-  actions: {
-    setShared(context, sharedResult) {
-      context.commit("setShared", sharedResult);
+    updateLocale(locale: any) {
+      this.locale = toLocaleObject(locale);
     },
-    setDictResult(context, dictResult) {
-      context.commit("setDictResult", dictResult);
+    updateLocales(locales: any) {
+      this.locales = locales;
     },
-    setStatus(context, status) {
-      context.commit("setStatus", status);
-    },
-    setLanguages(context, languages) {
-      context.commit("setLanguages", languages);
-    },
-    setResultBuffer(context, resultBuffer) {
-      context.commit("setResultBuffer", resultBuffer);
-    },
-    setConfig(context, config) {
-      context.commit("setConfig", config);
-    },
-    updateConfig(context, config) {
-      context.commit("updateConfig", config);
+    updateLocaleSetting(localeSetting: any) {
+      this.localeSetting = localeSetting;
     },
   },
-  modules: {},
-  getters: {
-    keys: (state) => {
-      return Object.keys(state.config);
-    },
-  },
-  plugins: plugins,
 });
 
+// Vuex compatibility wrapper for existing TypeScript logic
+class StoreWrapper {
+  private _store: any = null;
+
+  private get store() {
+    if (!this._store) {
+      this._store = useAppStore(pinia);
+    }
+    return this._store;
+  }
+
+  get state() {
+    return this.store;
+  }
+
+  get getters() {
+    const s = this.store;
+    return {
+      keys: Object.keys(s.config),
+      locale: s.locale || s.config.locale || {},
+      locales: s.locales || [],
+      localeSetting: s.localeSetting || s.config.localeSetting,
+    };
+  }
+
+  dispatch(actionName: string, payload: any) {
+    if (this.store[actionName]) {
+      this.store[actionName](payload);
+    }
+  }
+
+  commit(mutationName: string, payload: any) {
+    if (this.store[mutationName]) {
+      this.store[mutationName](payload);
+    }
+  }
+}
+
+const store = new StoreWrapper();
 export default store;
 
-export function getConfigByKey(key: Identifier) {
-  return (store.state.config as any)[key];
+export function getConfigByKey(key: any) {
+  return store.state.config[key];
 }
+export const initState = () => {};
+export const observePlugin = () => {};
+export const updateViewPlugin = () => {};
+export { observers, restoreFromConfig } from "./plugins/observe";

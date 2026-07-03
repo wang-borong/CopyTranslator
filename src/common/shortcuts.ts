@@ -1,8 +1,7 @@
 export type Accelerator = string;
-import { env } from "./env";
 import { mapToObj, objToMap } from "./types";
-import fs from "fs";
 import { version, compatible } from "./constant";
+
 export interface Shortcut {
   accelerator: Accelerator;
   id: string;
@@ -30,25 +29,31 @@ export const defaultLocalShortcuts: Shortcuts = new Map([
   ["hideWindow", "Escape"],
 ]);
 
-export function resetFile(file: string, config: Map<string, Accelerator>) {
+export function resetFile(keyName: string, config: Map<string, Accelerator>) {
   const res = mapToObj(config);
   res["version"] = version;
-  fs.writeFileSync(file, JSON.stringify(res, null, 4));
+  localStorage.setItem(keyName, JSON.stringify(res));
 }
+
 export function resetGlobalShortcuts() {
-  resetFile(env.shortcut, defaultGlobalShortcuts);
+  resetFile("global_shortcuts", defaultGlobalShortcuts);
 }
 
 export function resetLocalShortcuts() {
-  resetFile(env.localShortcut, defaultLocalShortcuts);
+  resetFile("local_shortcuts", defaultLocalShortcuts);
 }
 
 export function loadFile(
-  file: string,
+  keyName: string,
   defaultConfig: Map<string, Accelerator>
 ): Map<string, Accelerator> {
   try {
-    const config = JSON.parse(fs.readFileSync(file, "utf-8"));
+    const raw = localStorage.getItem(keyName);
+    if (!raw) {
+      resetFile(keyName, defaultConfig);
+      return defaultConfig;
+    }
+    const config = JSON.parse(raw);
     if (!compatible(config.version)) {
       throw "config incompatible";
     } else {
@@ -56,15 +61,15 @@ export function loadFile(
       return objToMap(config);
     }
   } catch (e) {
-    resetFile(file, defaultConfig);
+    resetFile(keyName, defaultConfig);
     return defaultConfig;
   }
 }
 
 export function loadGlobalShortcuts(): Map<string, Accelerator> {
-  return loadFile(env.shortcut, defaultGlobalShortcuts);
+  return loadFile("global_shortcuts", defaultGlobalShortcuts);
 }
 
 export function loadLocalShortcuts(): Map<string, Accelerator> {
-  return loadFile(env.localShortcut, defaultLocalShortcuts);
+  return loadFile("local_shortcuts", defaultLocalShortcuts);
 }

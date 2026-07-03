@@ -497,21 +497,14 @@ function initConfig(
     "baidu-ocr",
     new StructRule<KeyConfig>(
       { app_id: "", api_key: "", secret_key: "" },
-      undefined,
-      undefined,
-      undefined,
+      emptyOrAllCheck,
+      {
+        app_id: { uiType: "text" },
+        api_key: { uiType: "text" },
+        secret_key: { uiType: "text" },
+      },
+      "baiduOcrConfigNote",
       "https://ai.baidu.com/tech/ocr"
-    )
-  );
-
-  config.setRule(
-    "pp-ocr",
-    new StructRule<KeyConfig>(
-      { cwd: "", config_name: "" },
-      undefined,
-      undefined,
-      undefined,
-      "https://copytranslator.github.io/guide/12.0.0.html#ocr-%E9%85%8D%E7%BD%AE-%E5%85%89%E5%AD%A6%E5%AD%97%E7%AC%A6%E8%AF%86%E5%88%AB"
     )
   );
 

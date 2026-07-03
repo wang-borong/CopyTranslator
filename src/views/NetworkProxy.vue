@@ -10,17 +10,11 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component } from "vue-property-decorator";
-import BaseView from "@/components/BaseView.vue";
+<script setup lang="ts">
+import { useBase } from "@/components/useBase";
 import KeyConfig from "@/components/KeyConfig.vue";
 import Action from "@/components/Action.vue";
 
-@Component({
-  components: {
-    KeyConfig,
-    Action,
-  },
-})
-export default class NetworkProxy extends BaseView {}
+const base = useBase();
+const trans = base.trans;
 </script>

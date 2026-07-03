@@ -19,17 +19,18 @@
         <textarea
           v-bind:style="sourceFontStyle"
           class="hArea"
-          @keyup.ctrl.13="translate"
-          @keyup.ctrl.71="google"
-          @keyup.ctrl.66="baidu"
-          @keyup.ctrl.80="command"
+          :placeholder="trans['source'] || 'Source'"
+          @keyup.ctrl.enter="translate"
+          @keyup.ctrl.g="google"
+          @keyup.ctrl.b="baidu"
+          @keyup.ctrl.p="command"
           @select="onSelect"
           @blur="deSelect"
           @click="deSelect"
           @keydown="deSelect"
           @mousemove="mouseMove"
-          v-model="sharedResult.text"
-          @contextmenu="openMenu('contrastContext')"
+          v-model="sourceText"
+          @contextmenu.prevent="base.openMenu('contrastContext')"
         ></textarea>
       </div>
       <div
@@ -48,15 +49,15 @@
       >
         <DiffTextArea v-if="multiSource" class="hArea"></DiffTextArea>
         <CoTextArea
-          v-else-if="!config['contrastDict'] || !dictResult.valid"
+          v-else-if="!base.config.value['contrastDict'] || !dictResult.valid"
           class="hArea"
           v-bind:style="resultFontStyle"
-          :sentences="sharedResult.transPara"
-          :chineseStyle="sharedResult.chineseStyle"
+          :sentences="sharedResult ? sharedResult.transPara : []"
+          :chineseStyle="sharedResult ? sharedResult.chineseStyle : false"
           ref="myhead"
         ></CoTextArea>
         <DictResultPanel
-          v-else-if="config['contrastDict'] && dictResult.valid"
+          v-else-if="base.config.value['contrastDict'] && dictResult.valid"
           class="hArea"
         ></DictResultPanel>
       </div>
@@ -68,17 +69,18 @@
         @wheel="wheelHandler($event, 'source')"
         @keydown.ctrl.187="keyboardFontHandler($event, 'source')"
         @keydown.ctrl.189="keyboardFontHandler($event, 'source')"
-        @keyup.ctrl.13="translate"
-        @contextmenu="openMenu('contrastContext')"
+        @keyup.ctrl.enter="translate"
+        @contextmenu.prevent="base.openMenu('contrastContext')"
       >
         <textarea
           v-bind:style="sourceFontStyle"
-          @keyup.ctrl.13="translate"
-          @keyup.ctrl.71="google"
-          @keyup.ctrl.66="baidu"
-          @keyup.ctrl.80="command"
+          :placeholder="trans['source'] || 'Source'"
+          @keyup.ctrl.enter="translate"
+          @keyup.ctrl.g="google"
+          @keyup.ctrl.b="baidu"
+          @keyup.ctrl.p="command"
           class="vArea"
-          v-model="sharedResult.text"
+          v-model="sourceText"
         ></textarea>
       </div>
       <div
@@ -98,14 +100,14 @@
         <DiffTextArea v-if="multiSource" class="vArea"></DiffTextArea>
         <CoTextArea
           class="vArea"
-          v-else-if="!config['contrastDict'] || !dictResult.valid"
+          v-else-if="!base.config.value['contrastDict'] || !dictResult.valid"
           v-bind:style="resultFontStyle"
-          :sentences="sharedResult.transPara"
-          :chineseStyle="sharedResult.chineseStyle"
+          :sentences="sharedResult ? sharedResult.transPara : []"
+          :chineseStyle="sharedResult ? sharedResult.chineseStyle : false"
           ref="myhead"
         ></CoTextArea>
         <DictResultPanel
-          v-else-if="config['contrastDict'] && dictResult.valid"
+          v-else-if="base.config.value['contrastDict'] && dictResult.valid"
           class="vArea"
         ></DictResultPanel>
       </div>
@@ -113,234 +115,203 @@
   </div>
 </template>
 
-<script lang="ts">
-import BaseView from "../components/BaseView.vue";
-import { Mixins, Component } from "vue-property-decorator";
+<script setup lang="ts">
+import { ref, computed } from "vue";
+import { useBaseView } from "../components/useBaseView";
 import Focus from "./Focus.vue";
 import CoTextArea from "./CoTextArea.vue";
 import DiffTextArea from "./DiffTextArea.vue";
 import DictResultPanel from "./DictResult.vue";
 
-@Component({
-  components: {
-    Focus,
-    CoTextArea,
-    DiffTextArea,
-    DictResultPanel,
-  },
-})
-export default class ContrastPanel extends Mixins(BaseView) {
-  left: number = 0;
-  top: number = 0;
-  visible: boolean = false;
-  funcID: any = null;
-  selectedText: string = "";
+const base = useBaseView(() => getModifiedText());
 
-  x: number = 0;
-  y: number = 0;
-  leftWidth: number = 0;
-  fullWidth: number = 0;
-  fullHeight: number = 0;
-  leftHeight: number = 0;
+const left = ref(0);
+const top = ref(0);
+const visible = ref(false);
+const funcID = ref<any>(null);
+const selectedText = ref("");
 
-  get ratio(): number {
-    return this.layoutConfig.ratio;
-  }
+const x = ref(0);
+const y = ref(0);
+const leftWidth = ref(0);
+const fullWidth = ref(0);
+const fullHeight = ref(0);
+const leftHeight = ref(0);
 
-  set ratio(val: number) {
-    this.updateLayoutConfig({ ratio: val });
-  }
+const layoutType = base.layoutType;
+const layoutConfig = base.layoutConfig;
+const multiSource = base.multiSource;
+const dictResult = base.dictResult;
+const trans = base.trans;
+const fontColor = base.fontColor;
+const contentPadding = base.contentPadding;
+const contentLineHeight = base.contentLineHeight;
+const titlebarHeight = base.titlebarHeight;
 
-  mousedown(e: MouseEvent) {
-    // Get the current mouse position
-    this.x = e.clientX;
-    // Attach the listeners to `document`
-    const resizer = document.getElementById("hDrag") as any;
-    const leftSide = resizer.previousElementSibling;
-    const rightSide = resizer.nextElementSibling;
-    leftSide.style.userSelect = "none";
-    leftSide.style.pointerEvents = "none";
-    rightSide.style.userSelect = "none";
-    rightSide.style.pointerEvents = "none";
-    this.fullWidth = resizer.parentNode.getBoundingClientRect().width;
-    this.leftWidth = leftSide.getBoundingClientRect().width;
-    document.addEventListener("mousemove", this.mouseMoveHandler);
-    document.addEventListener("mouseup", this.mouseUpHandler);
-  }
+const sharedResult = base.sharedResult;
 
-  mouseMoveHandler(e: MouseEvent) {
-    // How far the mouse has been moved
-    const dx = e.clientX - this.x;
-    this.ratio = (this.leftWidth + 2 + dx) / this.fullWidth;
-  }
-
-  mouseUpHandler(e: MouseEvent) {
-    const resizer = document.getElementById("hDrag") as any;
-    const leftSide = resizer.previousElementSibling;
-    const rightSide = resizer.nextElementSibling;
-
-    leftSide.style.removeProperty("user-select");
-    leftSide.style.removeProperty("pointer-events");
-
-    rightSide.style.removeProperty("user-select");
-    rightSide.style.removeProperty("pointer-events");
-
-    // Remove the handlers of `mousemove` and `mouseup`
-    document.removeEventListener("mousemove", this.mouseMoveHandler);
-    document.removeEventListener("mouseup", this.mouseUpHandler);
-  }
-
-  vMousedown(e: MouseEvent) {
-    // Get the current mouse position
-    this.y = e.clientY;
-    const resizer = document.getElementById("vDrag") as any;
-    const leftSide = resizer.previousElementSibling;
-    const rightSide = resizer.nextElementSibling;
-    leftSide.style.userSelect = "none";
-    leftSide.style.pointerEvents = "none";
-    rightSide.style.userSelect = "none";
-    rightSide.style.pointerEvents = "none";
-    this.fullHeight = resizer.parentNode.getBoundingClientRect().height;
-    this.leftHeight = leftSide.getBoundingClientRect().height;
-    // Attach the listeners to `document`
-    document.addEventListener("mousemove", this.vMouseMoveHandler);
-    document.addEventListener("mouseup", this.vMouseUpHandler);
-  }
-
-  vMouseMoveHandler(e: MouseEvent) {
-    // How far the mouse has been moved
-    const dy = e.clientY - this.y;
-    this.ratio = (this.leftHeight + 2 + dy) / this.fullHeight;
-  }
-
-  vMouseUpHandler(e: MouseEvent) {
-    const resizer = document.getElementById("vDrag") as any;
-    const leftSide = resizer.previousElementSibling;
-    const rightSide = resizer.nextElementSibling;
-
-    leftSide.style.removeProperty("user-select");
-    leftSide.style.removeProperty("pointer-events");
-
-    rightSide.style.removeProperty("user-select");
-    rightSide.style.removeProperty("pointer-events");
-
-    // Remove the handlers of `mousemove` and `mouseup`
-    document.removeEventListener("mousemove", this.vMouseMoveHandler);
-    document.removeEventListener("mouseup", this.vMouseUpHandler);
-  }
-
-  get leftStyle() {
-    return {
-      width: `calc(${this.ratio * 100}% - 2px)`,
-    };
-  }
-
-  get rightStyle() {
-    return {
-      width: `calc(${(1 - this.ratio) * 100}% - 2px)`,
-      "overscroll-behavior": "contain",
-      overflow: "auto",
-    };
-  }
-
-  get topStyle() {
-    return {
-      height: `calc(${this.ratio * 100}% - 2px)`,
-    };
-  }
-
-  get bottomStyle() {
-    return {
-      height: `calc(${(1 - this.ratio) * 100}% - 2px)`,
-      "overscroll-behavior": "contain",
-      overflow: "auto",
-    };
-  }
-
-  getModifiedText() {
-    return this.sharedResult.text;
-  }
-
-  onSelect(event: Event) {
-    const target = event.target as any;
-    const selectedText = target.value.substring(
-      target.selectionStart,
-      target.selectionEnd
-    );
-    this.selectedText = selectedText;
-    this.visible = true;
-  }
-
-  deSelect(event: Event) {
-    this.visible = false;
-  }
-
-  mouseMove(event: MouseEvent) {
-    if (!this.visible) {
-      this.left = event.clientX + 10;
-      this.top = event.clientY - 50;
+const sourceText = computed({
+  get: () => base.sharedResult.value?.text || "",
+  set: (val: string) => {
+    if (base.sharedResult.value) {
+      base.sharedResult.value.text = val;
     }
   }
+});
 
-  mouseEnter(event: MouseEvent) {
-    this.funcID = setTimeout(this.onSearch, 500);
+const ratio = computed({
+  get: () => base.layoutConfig.value.ratio || 0.5,
+  set: (val: number) => {
+    base.updateLayoutConfig({ ratio: val });
   }
+});
 
-  mouseLeave(event: MouseEvent) {
-    if (this.funcID != null) {
-      clearTimeout(this.funcID);
-      this.funcID = null;
-    }
-  }
+const mousedown = (e: MouseEvent) => {
+  x.value = e.clientX;
+  const resizer = document.getElementById("hDrag") as any;
+  const leftSide = resizer.previousElementSibling;
+  const rightSide = resizer.nextElementSibling;
+  leftSide.style.userSelect = "none";
+  leftSide.style.pointerEvents = "none";
+  rightSide.style.userSelect = "none";
+  rightSide.style.pointerEvents = "none";
+  fullWidth.value = resizer.parentNode.getBoundingClientRect().width;
+  leftWidth.value = leftSide.getBoundingClientRect().width;
+  document.addEventListener("mousemove", mouseMoveHandler);
+  document.addEventListener("mouseup", mouseUpHandler);
+};
 
-  onSearch() {
-    this.callback("selectionQuery", this.selectedText);
-    this.funcID = null;
-  }
+const mouseMoveHandler = (e: MouseEvent) => {
+  const dx = e.clientX - x.value;
+  ratio.value = (leftWidth.value + 2 + dx) / fullWidth.value;
+};
 
-  get floatingStyle() {
-    return {
-      left: this.left.toString() + "px",
-      top: this.top.toString() + "px",
-      display: "none",
-      //display: this.visible ? "block" : "none", //这里先
-    };
-  }
+const mouseUpHandler = () => {
+  const resizer = document.getElementById("hDrag") as any;
+  const leftSide = resizer.previousElementSibling;
+  const rightSide = resizer.nextElementSibling;
 
-  get sourceFontStyle() {
-    return {
-      fontSize: this.sourceSize.toString() + "px",
-      height: "100%",
-      overflow: "auto",
-      color: this.fontColor,
-    };
-  }
+  leftSide.style.removeProperty("user-select");
+  leftSide.style.removeProperty("pointer-events");
 
-  get resultFontStyle() {
-    return {
-      fontSize: this.resultSize.toString() + "px",
-      height: "100%",
-      color: this.fontColor,
-    };
-  }
+  rightSide.style.removeProperty("user-select");
+  rightSide.style.removeProperty("pointer-events");
 
-  get idx() {
-    const idx = this.$refs.myhead;
-    console.log(idx);
-    return idx;
-  }
+  document.removeEventListener("mousemove", mouseMoveHandler);
+  document.removeEventListener("mouseup", mouseUpHandler);
+};
 
-  get maxParent() {
-    return {
-      height: `calc(100vh - ${this.titlebarHeight})`,
-      width: "100%",
-      padding: "0px",
-      "--content-padding": `${this.contentPadding}px`,
-      "--content-line-height": this.contentLineHeight.toString(),
-    };
+const vMousedown = (e: MouseEvent) => {
+  y.value = e.clientY;
+  const resizer = document.getElementById("vDrag") as any;
+  const leftSide = resizer.previousElementSibling;
+  const rightSide = resizer.nextElementSibling;
+  leftSide.style.userSelect = "none";
+  leftSide.style.pointerEvents = "none";
+  rightSide.style.userSelect = "none";
+  rightSide.style.pointerEvents = "none";
+  fullHeight.value = resizer.parentNode.getBoundingClientRect().height;
+  leftHeight.value = leftSide.getBoundingClientRect().height;
+  document.addEventListener("mousemove", vMouseMoveHandler);
+  document.addEventListener("mouseup", vMouseUpHandler);
+};
+
+const vMouseMoveHandler = (e: MouseEvent) => {
+  const dy = e.clientY - y.value;
+  ratio.value = (leftHeight.value + 2 + dy) / fullHeight.value;
+};
+
+const vMouseUpHandler = () => {
+  const resizer = document.getElementById("vDrag") as any;
+  const leftSide = resizer.previousElementSibling;
+  const rightSide = resizer.nextElementSibling;
+
+  leftSide.style.removeProperty("user-select");
+  leftSide.style.removeProperty("pointer-events");
+
+  rightSide.style.removeProperty("user-select");
+  rightSide.style.removeProperty("pointer-events");
+
+  document.removeEventListener("mousemove", vMouseMoveHandler);
+  document.removeEventListener("mouseup", vMouseUpHandler);
+};
+
+const leftStyle = computed(() => ({
+  width: `calc(${ratio.value * 100}% - 2px)`,
+}));
+
+const rightStyle = computed(() => ({
+  width: `calc(${(1 - ratio.value) * 100}% - 2px)`,
+  "overscroll-behavior": "contain",
+  overflow: "auto",
+}));
+
+const topStyle = computed(() => ({
+  height: `calc(${ratio.value * 100}% - 2px)`,
+}));
+
+const bottomStyle = computed(() => ({
+  height: `calc(${(1 - ratio.value) * 100}% - 2px)`,
+  "overscroll-behavior": "contain",
+  overflow: "auto",
+}));
+
+const getModifiedText = () => {
+  return sourceText.value;
+};
+
+const onSelect = (event: Event) => {
+  const target = event.target as any;
+  const selText = target.value.substring(
+    target.selectionStart,
+    target.selectionEnd
+  );
+  selectedText.value = selText;
+  visible.value = true;
+};
+
+const deSelect = () => {
+  visible.value = false;
+};
+
+const mouseMove = (event: MouseEvent) => {
+  if (!visible.value) {
+    left.value = event.clientX + 10;
+    top.value = event.clientY - 50;
   }
-}
+};
+
+const wheelHandler = base.wheelHandler;
+const keyboardFontHandler = base.keyboardFontHandler;
+const sourceFontStyle = computed(() => ({
+  fontSize: `${base.sourceSize.value}px`,
+  height: "100%",
+  overflow: "auto",
+  color: fontColor.value,
+  caretColor: fontColor.value,
+}));
+
+const resultFontStyle = computed(() => ({
+  fontSize: `${base.resultSize.value}px`,
+  height: "100%",
+  color: fontColor.value,
+  caretColor: fontColor.value,
+}));
+
+const maxParent = computed(() => ({
+  height: `calc(100vh - ${titlebarHeight.value})`,
+  width: "100%",
+  padding: "0px",
+  "--content-padding": `${contentPadding.value}px`,
+  "--content-line-height": contentLineHeight.value.toString(),
+}));
+
+const translate = base.translate;
+const google = base.google;
+const baidu = base.baidu;
+const command = base.command;
 </script>
+
 <style scoped>
 .hArea {
   height: 100%;
@@ -350,6 +321,9 @@ export default class ContrastPanel extends Mixins(BaseView) {
   line-height: var(--content-line-height);
   margin: 0px;
   box-sizing: border-box;
+  border: 0;
+  outline: none;
+  background: transparent;
 }
 .vArea {
   width: 100%;
@@ -358,6 +332,18 @@ export default class ContrastPanel extends Mixins(BaseView) {
   line-height: var(--content-line-height);
   margin: 0px;
   box-sizing: border-box;
+  border: 0;
+  outline: none;
+  background: transparent;
+}
+.hArea:focus,
+.vArea:focus {
+  box-shadow: inset 0 0 0 1px rgba(142, 36, 170, 0.42);
+}
+.hArea::placeholder,
+.vArea::placeholder {
+  color: currentColor;
+  opacity: 0.36;
 }
 .maxNoPad {
   height: 100%;
@@ -373,17 +359,13 @@ export default class ContrastPanel extends Mixins(BaseView) {
 .focusArea {
   overflow: auto;
 }
-.myswitch >>> .v-messages {
-  min-height: 0px;
-}
 
-.floating-div {
-  position: absolute;
-  z-index: 100000;
-}
 .resizer {
-  /* Doesn't allow to select the content inside */
   user-select: none;
-  background-color: #bebebe;
+  background-color: rgba(142, 36, 170, 0.32);
+  transition: background-color 0.12s ease;
+}
+.resizer:hover {
+  background-color: rgba(142, 36, 170, 0.72);
 }
 </style>

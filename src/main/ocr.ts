@@ -3,6 +3,7 @@ import eventBus from "@/common/event-bus";
 import conf from "@/common/configuration";
 import { Language } from "@opentranslate2/languages";
 import logger from "@/common/logger";
+import { invoke } from "@tauri-apps/api/core";
 
 type LanguageType =
   | "CHN_ENG"
@@ -17,47 +18,38 @@ type LanguageType =
   | "KOR";
 
 export class Recognizer {
-  client: any;
-  shortcutCapture: any;
+  config?: { app_id: string; api_key: string; secret_key: string };
 
-  constructor() {
-    // Lazy initialization in getShortcutCapture
-  }
-
-  getShortcutCapture() {
-    if (!this.shortcutCapture) {
-      try {
-        const req = eval("require");
-        const ShortcutCapture = req("shortcut-capture");
-        this.shortcutCapture = new ShortcutCapture();
-        this.shortcutCapture.on("capture", (data: any) =>
-          this.recognize(data["dataURL"])
-        );
-      } catch (e) {
-        logger.toast("截屏捕获模块在当前系统不可用");
-        this.shortcutCapture = { shortcutCapture: () => {} };
-      }
-    }
-    return this.shortcutCapture;
-  }
+  constructor() {}
 
   enabled(): boolean {
-    return !!this.client;
+    return !!this.config;
   }
 
   setUp(config: { app_id: string; api_key: string; secret_key: string }) {
     if (!examToken(config)) {
-      //修复config无效时依然client不为undefined
-      this.client = undefined;
+      this.config = undefined;
     } else {
-      const { app_id, api_key, secret_key } = config;
-      const AipOcrClient = require("baidu-aip-sdk").ocr;
-      this.client = new AipOcrClient(app_id, api_key, secret_key);
+      this.config = config;
     }
   }
 
-  capture() {
-    this.getShortcutCapture().shortcutCapture();
+  async capture() {
+    if (!this.enabled()) {
+      logger.toast("请先配置百度 OCR");
+      return;
+    }
+    try {
+      const image = await invoke<string | null>("read_clipboard_image");
+      if (!image) {
+        logger.toast("剪贴板中没有图片");
+        return;
+      }
+      await this.recognize(image);
+    } catch (err) {
+      console.error(err);
+      logger.toast("读取剪贴板图片失败");
+    }
   }
 
   getLanguage(): LanguageType {
@@ -88,29 +80,26 @@ export class Recognizer {
     }
   }
 
-  recognize(image: string) {
-    if (!this.client) {
+  async recognize(image: string) {
+    if (!this.config) {
       return;
     }
-    image = image.substring(image.indexOf(",") + 1);
-
-    this.client
-      .generalBasic(image, {
-        language_type: this.getLanguage(),
-        detect_language: "true",
-      })
-      .then(function (result: { words_result: Array<{ words: string }> }) {
-        const text = result.words_result
-          .map((item) => item["words"])
-          .join("\n");
-        logger.toast("OCR完成，正在翻译");
-        eventBus.at("dispatch", "translate", text);
-      })
-      .catch(function (err: any) {
-        // 如果发生网络错误Z
-        console.log(err);
-        logger.toast("OCR失败");
+    try {
+      const text = await invoke<string>("baidu_ocr", {
+        image,
+        config: this.config,
+        languageType: this.getLanguage(),
       });
+      if (!text.trim()) {
+        logger.toast("OCR未识别到文字");
+        return;
+      }
+      logger.toast("OCR完成，正在翻译");
+      eventBus.at("dispatch", "translate", text);
+    } catch (err: any) {
+      console.log(err);
+      logger.toast(`OCR失败: ${String(err)}`);
+    }
   }
 }
 export const recognizer = new Recognizer();

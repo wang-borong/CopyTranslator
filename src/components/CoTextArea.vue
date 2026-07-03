@@ -2,12 +2,12 @@
   <div
     class="co-textarea"
     contenteditable="true"
-    @contextmenu="openMenu('contrastContext')"
+    @contextmenu.prevent="base.openMenu('contrastContext')"
   >
     <div style="height: 100%;">
       <div v-if="chineseStyle">
         <span
-          v-for="(val, key) in sentences"
+          v-for="(val, key) in (sentences as string[])"
           :key="key"
           @mouseover="mouseOver(key)"
           style="display: block;"
@@ -17,7 +17,7 @@
       </div>
       <div v-else>
         <div
-          v-for="(val, key) in sentences"
+          v-for="(val, key) in (sentences as string[])"
           :key="key"
           @mouseover="mouseOver(key)"
         >
@@ -31,6 +31,7 @@
       <div
         v-if="
           status !== 'Translating' &&
+          sharedResult &&
           sharedResult.engine !== '' &&
           sharedResult.engine !== currentEngine &&
           mode === 'normal'
@@ -57,30 +58,29 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Mixins, Component, Vue } from "vue-property-decorator";
-import DictResultPanel from "./DictResult.vue";
-import BaseView from "./BaseView.vue";
+<script setup lang="ts">
+import { ref } from "vue";
+import { useBaseView } from "./useBaseView";
 
-const AppProps = Vue.extend({
-  props: {
-    sentences: Array,
-    chineseStyle: Boolean,
-  },
-});
+const props = defineProps<{
+  sentences: any;
+  chineseStyle: boolean;
+}>();
 
-@Component({
-  components: {
-    DictResultPanel,
-  },
-})
-export default class CoTextArea extends Mixins(Vue, AppProps, BaseView) {
-  mouseOver(idx: number) {
-    this.targetIdx = idx;
-  }
+const base = useBaseView(() => undefined);
+const status = base.status;
+const currentEngine = base.currentEngine;
+const mode = base.mode;
+const trans = base.trans;
+const toKeyan = base.toKeyan;
+const toStepfun = base.toStepfun;
 
-  targetIdx: number = -1;
-}
+const sharedResult = base.sharedResult;
+
+const targetIdx = ref(-1);
+const mouseOver = (idx: number) => {
+  targetIdx.value = idx;
+};
 </script>
 
 <style scoped>
@@ -89,7 +89,4 @@ export default class CoTextArea extends Mixins(Vue, AppProps, BaseView) {
   height: 100%;
   position: relative;
 }
-/* span:hover {
-  background: #fee972;
-} */
 </style>

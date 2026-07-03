@@ -5,8 +5,6 @@ import {
   TranslateError,
 } from "./types";
 import { OpenAIConfig } from "./types";
-import * as http from "http";
-import * as https from "https";
 
 // 默认提示词模板
 const DEFAULT_PROMPT = `You are a professional translator. Translate the following text to {to}. Only return the translated text without any explanation or additional information.
@@ -239,14 +237,6 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
       stream: false,
     };
 
-    const url = new URL(apiUrl);
-    const isLocal =
-      url.hostname === "localhost" ||
-      url.hostname === "127.0.0.1" ||
-      url.hostname === "::1" ||
-      url.hostname.startsWith("192.168.") ||
-      url.hostname.startsWith("10.");
-
     const axiosConfig: any = {
       headers: {
         "Content-Type": "application/json",
@@ -254,12 +244,6 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
       },
       timeout: 60000, // 设置 60 秒超时，AI 模型响应较慢
     };
-
-    if (isLocal) {
-      axiosConfig.httpAgent = new http.Agent();
-      axiosConfig.httpsAgent = new https.Agent({ rejectUnauthorized: false });
-      axiosConfig.proxy = false;
-    }
 
     try {
       const response = await this.axios.post<OpenAIChatResponse>(

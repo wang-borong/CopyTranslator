@@ -3,7 +3,7 @@
     class="diffTextArea"
     contenteditable="true"
     :style="colorStyle"
-    @contextmenu="openMenu('diffContext')"
+    @contextmenu.prevent="base.openMenu('diffContext')"
   >
     <div>
       <div
@@ -11,9 +11,10 @@
         :key="engine"
         style="margin-left: 2px;"
       >
-        <div style="height: 22px; display: flex;">
+        <div style="height: 22px; display: flex; align-items: center;">
           <v-btn
             v-bind:class="[engineClass(engine), 'engineBtnBase']"
+            variant="plain"
             icon
             width="22px"
             height="22px"
@@ -24,13 +25,14 @@
           </span>
           <v-btn
             color="primary"
+            variant="plain"
             icon
             class="btn"
             width="22px"
             height="22px"
-            @click="callback('copyResult', engine)"
+            @click="base.callback('copyResult', engine)"
             style="margin-top: auto; margin-bottom: auto;"
-            v-if="resultBuffer[engine].status !== 'Translating'"
+            v-if="resultBuffer[engine]?.status !== 'Translating'"
           >
             <v-icon size="22px"> mdi-content-copy </v-icon>
           </v-btn>
@@ -39,9 +41,8 @@
             :size="20"
             :width="2"
             color="primary"
-            :indeterminate="resultBuffer[engine].status == 'Translating'"
+            indeterminate
             style="margin-top: auto; margin-bottom: auto;"
-            value="100"
           >
           </v-progress-circular>
           <a
@@ -71,101 +72,88 @@
               >
             </div>
           </div>
-          <div v-else>{{ resultBuffer[engine].translation }}</div>
+          <div v-else>{{ resultBuffer[engine]?.translation || '' }}</div>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { Mixins, Component } from "vue-property-decorator";
-import BaseView from "./BaseView.vue";
+<script setup lang="ts">
+import { computed, ref } from "vue";
+import { useBaseView } from "./useBaseView";
 import { ResultBuffer } from "@/common/translate/types";
 import { compareAll, CompareResult } from "@/renderer/comparator";
 import { TranslatorNameResolver } from "@/common/translate/translator-name-resolver";
 import "@/css/shared-styles.css";
 
-@Component
-export default class DiffTextArea extends Mixins(BaseView) {
-  engineClass(engineId: string) {
-    return TranslatorNameResolver.getEngineClass(engineId);
-  }
+const base = useBaseView(() => undefined);
+const trans = base.trans;
+const diffSize = base.diffSize;
+const fontColor = base.fontColor;
+const toKeyan = base.toKeyan;
+const toStepfun = base.toStepfun;
 
-  getEngineName(engineId: string): string {
-    const trans = this.$store.getters.locale;
-    return TranslatorNameResolver.getDisplayName(engineId, trans);
-  }
+const engineClass = (engineId: string) => {
+  return TranslatorNameResolver.getEngineClass(engineId);
+};
 
-  get sortedEngines(): string[] {
-    const configOrder = this.$store.state.config["translator-compare"] || [];
-    const bufferKeys = Object.keys(this.resultBuffer);
+const getEngineName = (engineId: string): string => {
+  return TranslatorNameResolver.getDisplayName(engineId, trans.value);
+};
 
-    // Filter configOrder to only include keys present in buffer
-    const sorted = configOrder.filter((key: string) =>
-      bufferKeys.includes(key)
-    );
+const resultBuffer = computed<ResultBuffer>(() => {
+  // Use store resultBuffer directly
+  return (window as any).$controller.transCon.resultBuffer || {};
+});
 
-    // Add any keys from buffer that weren't in configOrder
-    const remaining = bufferKeys.filter((key: string) => !sorted.includes(key));
+const sortedEngines = computed(() => {
+  const configOrder = base.config.value["translator-compare"] || [];
+  const bufferKeys = Object.keys(resultBuffer.value);
+  const sorted = configOrder.filter((key: string) =>
+    bufferKeys.includes(key)
+  );
+  const remaining = bufferKeys.filter((key: string) => !sorted.includes(key));
+  return [...sorted, ...remaining];
+});
 
-    return [...sorted, ...remaining];
-  }
-
-  get compareResult(): CompareResult {
-    if (Object.keys(this.validResults).length > 1) {
-      return compareAll(this.resultBuffer);
-    } else {
-      return {};
+const validResults = computed(() => {
+  const valids: ResultBuffer = {};
+  Object.entries(resultBuffer.value).forEach(([key, item]) => {
+    if (item.status !== "Translating") {
+      valids[key] = item;
     }
-  }
+  });
+  return valids;
+});
 
-  get validResults(): ResultBuffer {
-    const valids: ResultBuffer = {};
-    Object.entries(this.resultBuffer).map(([key, item]) => {
-      if (item.status != "Translating") {
-        valids[key] = item;
-      }
-    });
-    return valids;
-  }
-
-  get resultBuffer(): ResultBuffer {
-    return this.$store.state.resultBuffer;
-  }
-
-  get diffStyle() {
-    return {
-      fontSize: this.diffSize.toString() + "px",
-    };
-  }
-
-  get colorStyle() {
-    return {
-      color: this.fontColor,
-    };
-  }
-
-  mouseOver(idx: number) {
-    this.targetIdx = idx;
-  }
-
-  getStyle(p: any) {
-    if (p.added) {
-      return { color: "green" };
-    }
+const compareResult = computed<CompareResult>(() => {
+  if (Object.keys(validResults.value).length > 1) {
+    return compareAll(resultBuffer.value);
+  } else {
     return {};
   }
+});
 
-  targetIdx: number = -1;
-}
+const diffStyle = computed(() => ({
+  fontSize: `${diffSize.value}px`,
+}));
+
+const colorStyle = computed(() => ({
+  color: fontColor.value,
+}));
+
+const getStyle = (p: any) => {
+  if (p.added) {
+    return { color: "green" };
+  }
+  return {};
+};
+
+const targetIdx = ref(-1);
 </script>
 
 <style scoped>
-/* span:hover {
-  background: #fee972;
-} */
-
 .btn {
   padding: 0px !important;
   min-width: 0px !important;

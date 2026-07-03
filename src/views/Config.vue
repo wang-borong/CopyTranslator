@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts">
-import { shell } from "electron";
+import { invoke } from "@tauri-apps/api/core";
 import { Component, Vue } from "vue-property-decorator";
 import KeyConfig from "@/components/KeyConfig.vue";
 import { structActionTypes } from "../common/types";
@@ -23,7 +23,11 @@ import { structActionTypes } from "../common/types";
 export default class apiConfig extends Vue {
   translators = structActionTypes;
   tutorial() {
-    shell.openExternal("https://www.bilibili.com/video/av53888416/");
+    invoke("open_url", {
+      url: "https://www.bilibili.com/video/av53888416/",
+    }).catch((err) => {
+      console.error("Failed to open URL:", err);
+    });
   }
 }
 </script>

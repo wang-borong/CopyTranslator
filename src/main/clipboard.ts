@@ -1,62 +1,81 @@
-interface Operation {
-  key: string;
-  args: any[];
-}
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 
-function delay(
-  target: any,
-  propertyKey: string,
-  descriptor: PropertyDescriptor
-) {
-  const newMethod = function (...args: any[]) {
-    if (target["clipboard"] == undefined) {
-      target["operations"].push({
-        key: propertyKey,
-        args,
-      });
-      return;
-    } else {
-      const clipboard = target["clipboard"];
-      return clipboard[propertyKey].call(clipboard, ...args);
-    }
-  };
-  descriptor.value = newMethod; // 替换原声明
-}
+const isTauriRuntime = () =>
+  typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__);
 
-class ClipboardWarpper {
-  static clipboard: any = undefined;
-  static operations: Array<Operation> = [];
+export class ClipboardWrapper {
+  private static listeners = new Map<string, Function[]>();
+  private static watching = false;
+  private static lastText = "";
+  private static lastImageDataUrl = "";
+
   static init() {
-    ClipboardWarpper.clipboard = require("electron-clipboard-extended");
-    ClipboardWarpper.operations.forEach((operation) => {
-      return ClipboardWarpper.clipboard[operation["key"]].call(
-        ClipboardWarpper.clipboard,
-        ...operation["args"]
-      );
+    if (!isTauriRuntime()) {
+      return;
+    }
+    listen("clipboard-changed", (event) => {
+      const text = event.payload as string;
+      ClipboardWrapper.lastText = text;
+      if (ClipboardWrapper.watching) {
+        const list = ClipboardWrapper.listeners.get("text-changed") || [];
+        list.forEach((cb) => cb());
+      }
+    }).catch((err) => {
+      console.warn("Failed to listen clipboard text events:", err);
     });
-    ClipboardWarpper.operations = [];
+    listen("clipboard-image-changed", (event) => {
+      const image = event.payload as string;
+      ClipboardWrapper.lastImageDataUrl = image;
+      if (ClipboardWrapper.watching) {
+        const list = ClipboardWrapper.listeners.get("image-changed") || [];
+        list.forEach((cb) => cb());
+      }
+    }).catch((err) => {
+      console.warn("Failed to listen clipboard image events:", err);
+    });
   }
 
-  @delay
-  static on(...args: any[]) {}
+  static on(event: string, callback: Function) {
+    if (!ClipboardWrapper.listeners.has(event)) {
+      ClipboardWrapper.listeners.set(event, []);
+    }
+    ClipboardWrapper.listeners.get(event)!.push(callback);
+  }
 
-  @delay
-  static writeText(text: string) {}
+  static writeText(text: string) {
+    navigator.clipboard.writeText(text).catch(err => {
+      console.error("Failed to write to clipboard:", err);
+    });
+  }
 
-  /**
-   * @param text selection(仅支持Linux X11桌面环境，获取鼠标选中的文本)
-   */
-  @delay
-  static readText(text?: string): any {}
+  static readText(): string {
+    return ClipboardWrapper.lastText;
+  }
 
-  @delay
-  static startWatching() {}
+  static startWatching() {
+    ClipboardWrapper.watching = true;
+    if (!isTauriRuntime()) {
+      return;
+    }
+    invoke("set_listen_clipboard", { listen: true }).catch((err) => {
+      console.warn("Failed to start clipboard watching:", err);
+    });
+  }
 
-  @delay
-  static stopWatching() {}
+  static stopWatching() {
+    ClipboardWrapper.watching = false;
+    if (!isTauriRuntime()) {
+      return;
+    }
+    invoke("set_listen_clipboard", { listen: false }).catch((err) => {
+      console.warn("Failed to stop clipboard watching:", err);
+    });
+  }
 
-  @delay
-  static readImage(): any {}
+  static readImage(): any {
+    return { toDataURL: () => ClipboardWrapper.lastImageDataUrl };
+  }
 }
 
-export const clipboard = ClipboardWarpper;
+export const clipboard = ClipboardWrapper;

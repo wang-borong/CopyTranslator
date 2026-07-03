@@ -1,6 +1,6 @@
 import { Identifier, ActionInitOpt } from "./types";
 import config, { ConfigParser } from "./configuration";
-import { Promisified } from "@/proxy/renderer";
+import type { Promisified } from "@/proxy/renderer";
 import { ActionManager } from "./action";
 import bus from "./event-bus";
 

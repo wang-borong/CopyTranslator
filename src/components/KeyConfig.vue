@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="d-flex justify-end mb-2" v-if="topSave">
-      <v-btn small color="primary" @click="save()" :disabled="!isDirty">
+      <v-btn size="small" color="primary" @click="save()" :disabled="!isDirty">
         {{ trans["saveConfig"] || "保存配置" }}
       </v-btn>
     </div>
@@ -69,7 +69,7 @@
     </div>
     <v-btn
       v-if="!topSave"
-      small
+      size="small"
       color="primary"
       class="mt-2"
       @click="save()"
@@ -89,186 +89,165 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from "vue";
 import { Identifier, translatorTypes } from "../common/types";
-import { shell } from "electron";
+import { invoke } from "@tauri-apps/api/core";
 import { FieldMetadata } from "../common/rule";
 import config from "../common/configuration";
-import { Prop, Component, Watch } from "vue-property-decorator";
-import Base from "./Base.vue";
+import { useBase } from "./useBase";
 
-@Component
-class KeyConfig extends Base {
-  @Prop({ default: undefined }) readonly identifier!: Identifier;
-  @Prop({ default: false }) readonly topSave!: boolean;
-  keyConfigLocal: Record<string, any> = {};
-  saveMessage = "";
-  saveMessageType: "success" | "error" = "success";
+const props = defineProps<{
+  identifier: Identifier;
+  topSave?: boolean;
+}>();
 
-  get keyConfig() {
-    return this.$store.state.config[this.identifier];
+const base = useBase();
+const trans = base.trans;
+
+const keyConfigLocal = ref<Record<string, any>>({});
+const saveMessage = ref("");
+const saveMessageType = ref<"success" | "error">("success");
+
+const keyConfig = computed(() => {
+  return base.config.value[props.identifier] || {};
+});
+
+const isDirty = computed(() => {
+  return JSON.stringify(keyConfigLocal.value) !== JSON.stringify(keyConfig.value);
+});
+
+const noticeText = computed(() => {
+  if (!config.has(props.identifier)) return "";
+  const rule = config.getRule(props.identifier);
+  const notice = rule?.notice;
+  if (!notice) return "";
+  return trans.value[notice] || notice;
+});
+
+const docUrl = computed(() => {
+  if (!config.has(props.identifier)) return "";
+  const rule = config.getRule(props.identifier);
+  return rule?.docUrl || "";
+});
+
+const openDocUrl = () => {
+  if (docUrl.value) {
+    invoke("open_url", { url: docUrl.value }).catch((err) => {
+      console.error("Failed to open URL:", err);
+    });
   }
+};
 
-  get isDirty() {
-    return (
-      JSON.stringify(this.keyConfigLocal) !== JSON.stringify(this.keyConfig)
-    );
+const resetLocal = () => {
+  keyConfigLocal.value = JSON.parse(JSON.stringify(keyConfig.value));
+  saveMessage.value = "";
+};
+
+onMounted(() => {
+  resetLocal();
+});
+
+watch(() => props.identifier, () => {
+  resetLocal();
+});
+
+const getFieldMetadata = (key: string | number): FieldMetadata | undefined => {
+  try {
+    const rule = config.getRule(props.identifier);
+    return rule?.metadata?.[key];
+  } catch (e) {
+    console.error(`[KeyConfig] getFieldMetadata error:`, e);
+    return undefined;
   }
+};
 
-  get noticeText() {
-    if (!config.has(this.identifier)) {
-      return "";
+const getSelectOptions = (key: string | number): string[] => {
+  const metadata = getFieldMetadata(key);
+  return metadata?.options ? [...metadata.options] : [];
+};
+
+const getUiType = (key: string | number): string => {
+  const metadata = getFieldMetadata(key);
+  return metadata?.uiType || "text";
+};
+
+const getLabel = (key: string | number): string => {
+  const metadata = getFieldMetadata(key);
+  const labelKey = metadata?.label || key.toString();
+  return trans.value[labelKey] || labelKey;
+};
+
+const getInputType = (key: string | number): string => {
+  const uiType = getUiType(key);
+  if (uiType === "number") return "number";
+  const k = key.toString().toLowerCase();
+  if (k.includes("password") || k.includes("secret")) return "password";
+  return "text";
+};
+
+const save = () => {
+  for (const key of Object.keys(keyConfigLocal.value)) {
+    const val = keyConfigLocal.value[key];
+    if (val == null) {
+      const uiType = getUiType(key);
+      if (uiType === "text" || uiType === "textarea" || uiType === "select") {
+        keyConfigLocal.value[key] = "";
+      }
     }
-    const rule = config.getRule(this.identifier);
-    const notice = rule?.notice;
-    if (!notice) {
-      return "";
-    }
-    return this.trans[notice] || notice;
   }
 
-  get docUrl() {
-    if (!config.has(this.identifier)) {
-      return "";
-    }
-    const rule = config.getRule(this.identifier);
-    return rule?.docUrl || "";
-  }
-
-  openDocUrl() {
-    if (!this.docUrl) {
-      return;
-    }
-    shell.openExternal(this.docUrl);
-  }
-
-  mounted() {
-    this.resetLocal();
-  }
-
-  @Watch("identifier")
-  onIdentifierChange() {
-    this.resetLocal();
-  }
-
-  resetLocal() {
-    const current = this.keyConfig || {};
-    this.keyConfigLocal = JSON.parse(JSON.stringify(current));
-    this.saveMessage = "";
-  }
-
-  getFieldMetadata(key: string | number): FieldMetadata | undefined {
-    try {
-      const rule = config.getRule(this.identifier);
-      const metadata = rule?.metadata?.[key];
-
-      return metadata;
-    } catch (e) {
-      console.error(`[KeyConfig] getFieldMetadata error:`, e);
-      return undefined;
-    }
-  }
-
-  isSelect(key: string | number): boolean {
-    const metadata = this.getFieldMetadata(key);
-    const result = metadata?.uiType === "select";
-    console.log(`[KeyConfig] isSelect - key: ${key}, result: ${result}`);
-    return result;
-  }
-
-  getSelectOptions(key: string | number): string[] {
-    const metadata = this.getFieldMetadata(key);
-    const options = metadata?.options ? [...metadata.options] : [];
-    // console.log(`[KeyConfig] getSelectOptions - key: ${key}, options:`, options);
-    return options;
-  }
-
-  getUiType(key: string | number): string {
-    const metadata = this.getFieldMetadata(key);
-    return metadata?.uiType || "text";
-  }
-
-  getLabel(key: string | number): string {
-    const metadata = this.getFieldMetadata(key);
-    const labelKey = metadata?.label || key.toString();
-    return this.trans[labelKey] || labelKey;
-  }
-
-  getInputType(key: string | number): string {
-    const uiType = this.getUiType(key);
-    if (uiType === "number") return "number";
-    const k = key.toString().toLowerCase();
-    if (k.includes("password") || k.includes("secret")) return "password";
-    return "text";
-  }
-
-  save() {
-    // 预处理：修复空值和类型问题
-    for (const key of Object.keys(this.keyConfigLocal)) {
-      const val = this.keyConfigLocal[key];
-      // 如果值为 null 或 undefined，且 UI 类型为文本，则转为空字符串
-      if (val == null) {
-        const uiType = this.getUiType(key);
-        if (uiType === "text" || uiType === "textarea" || uiType === "select") {
-          this.keyConfigLocal[key] = "";
+  const status = config.checkStatus(props.identifier, keyConfigLocal.value);
+  if (status.canSave) {
+    base.callback(props.identifier, keyConfigLocal.value);
+    if (translatorTypes.includes(props.identifier as any)) {
+      const enabled = [...(base.config.value["translator-enabled"] || [])];
+      const cache = [...(base.config.value["translator-cache"] || [])];
+      if (status.canEnable) {
+        const nextEnabled = Array.from(
+          new Set([...enabled, props.identifier])
+        ).filter((id: string) => translatorTypes.includes(id as any));
+        if (
+          nextEnabled.length !== enabled.length ||
+          !enabled.includes(props.identifier)
+        ) {
+          base.callback("translator-enabled", nextEnabled);
+        }
+        const nextCache = cache.filter((id: string) =>
+          nextEnabled.includes(id)
+        );
+        if (nextCache.length !== cache.length) {
+          base.callback("translator-cache", nextCache);
+        }
+        const fallback = base.config.value["fallbackTranslator"];
+        if (nextEnabled.length > 0 && !nextEnabled.includes(fallback)) {
+          base.callback("fallbackTranslator", nextEnabled[0]);
+        }
+      } else {
+        const nextEnabled = enabled.filter(
+          (id: string) => id !== props.identifier
+        );
+        if (nextEnabled.length !== enabled.length) {
+          base.callback("translator-enabled", nextEnabled);
+        }
+        const nextCache = cache.filter(
+          (id: string) => id !== props.identifier
+        );
+        if (nextCache.length !== cache.length) {
+          base.callback("translator-cache", nextCache);
         }
       }
     }
-    const status = config.checkStatus(this.identifier, this.keyConfigLocal);
-    if (status.canSave) {
-      this.callback(this.identifier, this.keyConfigLocal);
-      if (translatorTypes.includes(this.identifier as any)) {
-        const enabled = [
-          ...(this.$store.state.config["translator-enabled"] || []),
-        ];
-        const cache = [...(this.$store.state.config["translator-cache"] || [])];
-        if (status.canEnable) {
-          const nextEnabled = Array.from(
-            new Set([...enabled, this.identifier])
-          ).filter((id: string) => translatorTypes.includes(id as any));
-          if (
-            nextEnabled.length !== enabled.length ||
-            !enabled.includes(this.identifier)
-          ) {
-            this.callback("translator-enabled", nextEnabled);
-          }
-          const nextCache = cache.filter((id: string) =>
-            nextEnabled.includes(id)
-          );
-          if (nextCache.length !== cache.length) {
-            this.callback("translator-cache", nextCache);
-          }
-          const fallback = this.$store.state.config["fallbackTranslator"];
-          if (nextEnabled.length > 0 && !nextEnabled.includes(fallback)) {
-            this.callback("fallbackTranslator", nextEnabled[0]);
-          }
-        } else {
-          const nextEnabled = enabled.filter(
-            (id: string) => id !== this.identifier
-          );
-          if (nextEnabled.length !== enabled.length) {
-            this.callback("translator-enabled", nextEnabled);
-          }
-          const nextCache = cache.filter(
-            (id: string) => id !== this.identifier
-          );
-          if (nextCache.length !== cache.length) {
-            this.callback("translator-cache", nextCache);
-          }
-        }
-      }
-      this.saveMessage = this.trans["configSaveSuccess"] || "已保存并通过校验";
-      this.saveMessageType = "success";
-    } else {
-      this.saveMessage =
-        status.saveReason ||
-        this.trans["configSaveInvalid"] ||
-        "配置未通过校验，请检查必填项";
-      this.saveMessageType = "error";
-    }
+    saveMessage.value = trans.value["configSaveSuccess"] || "已保存并通过校验";
+    saveMessageType.value = "success";
+  } else {
+    saveMessage.value =
+      status.saveReason ||
+      trans.value["configSaveInvalid"] ||
+      "配置未通过校验，请检查必填项";
+    saveMessageType.value = "error";
   }
-}
-export default KeyConfig;
+};
 </script>
 
 <style scoped>
