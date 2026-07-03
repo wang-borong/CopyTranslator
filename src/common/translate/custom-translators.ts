@@ -82,7 +82,7 @@ export class CustomTranslatorManager {
     console.debug("[供应商管理] 开始初始化...");
     this.loadFromConfig();
     this.expandProvidersToTranslators();
-    config.set("customTranslators", this.getAllIds());
+    this.syncTranslatorRuntimeConfig();
     console.debug("[供应商管理] 初始化完成");
   }
 
@@ -120,6 +120,7 @@ export class CustomTranslatorManager {
    */
   private expandProvidersToTranslators() {
     this.customTranslators.clear();
+    this.customConfigs.clear();
 
     for (const provider of this.providers.values()) {
       if (provider.enabled === false) continue;
@@ -169,14 +170,12 @@ export class CustomTranslatorManager {
   ): CustomTranslatorConfig | null {
     try {
       // 目前只支持 OpenAI 兼容 API
-      const config = provider.config || {};
+      const providerConfig = provider.config || {};
       const translatorConfig = {
+        ...providerConfig,
         apiBase: provider.apiBase,
         apiKey: provider.apiKey,
         model: modelName,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-        prompt: config.prompt,
       };
       return {
         config: translatorConfig,
@@ -211,8 +210,24 @@ export class CustomTranslatorManager {
     try {
       const configs = Array.from(this.providers.values());
       config.set("translatorProviders", configs);
+      this.syncTranslatorRuntimeConfig();
     } catch (error) {
       console.error("[供应商管理] 保存配置失败:", error);
+    }
+  }
+
+  private syncTranslatorRuntimeConfig() {
+    const customIds = this.getAllIds();
+    config.set("customTranslators", customIds);
+    for (const actionId of [
+      "translatorType",
+      "fallbackTranslator",
+      "translator-enabled",
+      "translator-cache",
+      "translator-compare",
+      "translator-double",
+    ]) {
+      eventBus.at(actionId);
     }
   }
 

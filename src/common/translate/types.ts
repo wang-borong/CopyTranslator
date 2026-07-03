@@ -63,15 +63,39 @@ export const promiseAny = async <T>(
 };
 
 // OpenAI 兼容 API 的配置接口
+export const aiPromptPresets = [
+  "faithful",
+  "natural",
+  "technical",
+  "academic",
+  "casual",
+  "custom",
+] as const;
+
+export type AiPromptPreset = typeof aiPromptPresets[number];
+
+export interface AiTranslationBehaviorConfig {
+  promptPreset?: AiPromptPreset; // 翻译行为预设
+  rolePrompt?: string; // 角色描述，会进入 system message
+  systemPrompt?: string; // 自定义 system prompt
+  userPrompt?: string; // 自定义 user prompt 模板
+  styleGuide?: string; // 风格约束
+  glossary?: string; // 术语表
+  preserveFormatting?: boolean; // 是否保留换行、Markdown、占位符等格式
+}
+
 export interface OpenAIConfig {
   apiBase: string; // API 基础地址，例如: https://api.openai.com/v1
   apiKey: string; // API 密钥
   model?: string; // 模型名称，默认为 gpt-3.5-turbo
-  prompt?: string; // 自定义提示词模板，使用 {from}, {to}, {text} 作为占位符
+  prompt?: string; // 旧版自定义提示词模板，保留用于兼容
   temperature?: number; // 温度参数，默认为 0.3
   maxTokens?: number; // 最大生成token数，默认为 2000
   translatorName?: string; // 翻译器名称
 }
+
+export type OpenAIConfigWithBehavior = OpenAIConfig &
+  AiTranslationBehaviorConfig;
 
 /**
  * 供应商配置接口
@@ -84,7 +108,7 @@ export interface ProviderConfig {
   apiBase: string; // API 基础地址
   apiKey: string; // API 密钥
   enabledModels: string[]; // 已启用的模型列表，如 ["gpt-4", "gpt-3.5-turbo"]
-  config?: {
+  config?: AiTranslationBehaviorConfig & {
     // 可选的默认配置，会应用到所有模型
     temperature?: number;
     maxTokens?: number;

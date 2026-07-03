@@ -4,7 +4,7 @@
     contenteditable="true"
     @contextmenu.prevent="base.openMenu('contrastContext')"
   >
-    <div style="height: 100%;">
+    <div class="co-textarea-content">
       <div v-if="chineseStyle">
         <span
           v-for="(val, key) in (sentences as string[])"
@@ -27,33 +27,15 @@
         </div>
       </div>
     </div>
-    <div style="font-size: 15px; position: absolute; right: 0px; bottom: 5px;">
-      <div
-        v-if="
-          status !== 'Translating' &&
-          sharedResult &&
-          sharedResult.engine !== '' &&
-          sharedResult.engine !== currentEngine &&
-          mode === 'normal'
-        "
-      >
-        <a>
-          <span>
-            {{ currentEngine }}&nbsp;{{ trans["fallbackPrompt1"]
-            }}{{ sharedResult.engine }}{{ trans["fallbackPrompt2"] }}
-          </span>
-        </a>
-      </div>
-      <div v-else-if="currentEngine === 'keyan'">
-        <a @click="toKeyan()">
-          <span>{{ trans["keyanSlogan"] }}</span>
-        </a>
-      </div>
-      <div v-else-if="currentEngine === 'stepfun'">
-        <a @click="toStepfun()">
-          <span>{{ trans["stepfunSlogan"] }}</span>
-        </a>
-      </div>
+    <div
+      v-if="engineNotice"
+      class="engine-notice"
+      :class="{ clickable: engineNoticeClickable }"
+      :title="engineNotice"
+      contenteditable="false"
+      @click="openEngineNotice"
+    >
+      {{ engineNotice }}
     </div>
   </div>
 </template>
@@ -68,14 +50,9 @@ const props = defineProps<{
 }>();
 
 const base = useBaseView(() => undefined);
-const status = base.status;
-const currentEngine = base.currentEngine;
-const mode = base.mode;
-const trans = base.trans;
-const toKeyan = base.toKeyan;
-const toStepfun = base.toStepfun;
-
-const sharedResult = base.sharedResult;
+const engineNotice = base.engineNotice;
+const engineNoticeClickable = base.engineNoticeClickable;
+const openEngineNotice = base.openEngineNotice;
 
 const targetIdx = ref(-1);
 const mouseOver = (idx: number) => {
@@ -86,7 +63,35 @@ const mouseOver = (idx: number) => {
 <style scoped>
 .co-textarea {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+.co-textarea-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.engine-notice {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  color: currentColor;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.72;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  user-select: none;
+  white-space: nowrap;
+}
+.engine-notice.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 </style>

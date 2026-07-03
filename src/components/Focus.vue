@@ -1,12 +1,13 @@
 <template>
   <div
+    class="focus-container"
     :style="focusContainerStyle"
     @wheel="wheelHandler($event, 'result')"
     @keydown.ctrl.187="keyboardFontHandler($event, 'result')"
     @keydown.ctrl.189="keyboardFontHandler($event, 'result')"
   >
     <div
-      class="max"
+      class="focus-body max"
       @keyup.ctrl.enter.capture="translate"
       @keyup.ctrl.g.capture="google"
       @keyup.ctrl.b.capture="baidu"
@@ -21,11 +22,11 @@
         @contextmenu.prevent="base.openMenu('focusContext')"
       >
         <div v-if="(config.focusSource && mode=='normal')">
-          <div>原文：</div>
+          <div>{{ trans["source"] }}:</div>
           <div class="focusText" id="focusSource" contenteditable="true">
             {{ sharedResult ? sharedResult.text : '' }}
           </div>
-          <div>译文：</div>
+          <div>{{ trans["result"] }}:</div>
           <div class="focusText" contenteditable="true">
             {{ sharedResult ? sharedResult.translation : '' }}
           </div>
@@ -48,33 +49,14 @@
         class="max focusPadding"
       ></DictResultPanel>
     </div>
-    <div style="font-size: 15px; position: absolute; right: 0px; bottom: 5px;">
-      <div
-        v-if="
-          status !== 'Translating' &&
-          mode === 'normal' &&
-          sharedResult &&
-          sharedResult.engine !== '' &&
-          sharedResult.engine !== currentEngine
-        "
-      >
-        <a>
-          <span>
-            {{ currentEngine }}&nbsp;{{ trans["fallbackPrompt1"]
-            }}{{ sharedResult.engine }}{{ trans["fallbackPrompt2"] }}
-          </span>
-        </a>
-      </div>
-      <div v-else-if="currentEngine === 'keyan'">
-        <a @click="toKeyan()">
-          <span>{{ trans["keyanSlogan"] }}</span>
-        </a>
-      </div>
-      <div v-else-if="currentEngine === 'stepfun'">
-        <a @click="toStepfun()">
-          <span>{{ trans["stepfunSlogan"] }}</span>
-        </a>
-      </div>
+    <div
+      v-if="engineNotice"
+      class="engine-notice"
+      :class="{ clickable: engineNoticeClickable }"
+      :title="engineNotice"
+      @click="openEngineNotice"
+    >
+      {{ engineNotice }}
     </div>
   </div>
 </template>
@@ -86,16 +68,12 @@ import DictResultPanel from "./DictResult.vue";
 import DiffTextArea from "./DiffTextArea.vue";
 
 const base = useBaseView(() => getModifiedText());
-const status = base.status;
-const currentEngine = base.currentEngine;
 const mode = base.mode;
 const trans = base.trans;
 const config = base.config;
 const fontColor = base.fontColor;
 const contentPadding = base.contentPadding;
 const contentLineHeight = base.contentLineHeight;
-const toKeyan = base.toKeyan;
-const toStepfun = base.toStepfun;
 const resultSize = base.resultSize;
 const wheelHandler = base.wheelHandler;
 const keyboardFontHandler = base.keyboardFontHandler;
@@ -103,8 +81,10 @@ const translate = base.translate;
 const google = base.google;
 const baidu = base.baidu;
 const command = base.command;
-
 const sharedResult = base.sharedResult;
+const engineNotice = base.engineNotice;
+const engineNoticeClickable = base.engineNoticeClickable;
+const openEngineNotice = base.openEngineNotice;
 
 const translationText = computed({
   get: () => base.sharedResult.value?.translation || "",
@@ -159,6 +139,17 @@ const getModifiedText = () => {
 </script>
 
 <style scoped>
+.focus-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.focus-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .focusText {
   resize: none;
   line-height: var(--content-line-height);
@@ -170,5 +161,25 @@ const getModifiedText = () => {
 .focusPadding {
   padding: var(--content-padding);
   box-sizing: border-box;
+}
+.engine-notice {
+  flex: 0 0 auto;
+  margin: 0 var(--content-padding) 4px var(--content-padding);
+  padding-top: 4px;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  color: currentColor;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.72;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  user-select: none;
+  white-space: nowrap;
+}
+.engine-notice.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 </style>

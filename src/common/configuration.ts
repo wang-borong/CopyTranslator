@@ -243,6 +243,7 @@ function initConfig(
   );
   config.setRule("colorMode", new UnionRule<ColorMode>("auto", colorModes));
   config.setRule("titlebarHeight", new TypeRule<number>(32));
+  config.setRule("drawerWidth", new TypeRule<number>(200, (x) => x >= 160 && x <= 360));
   config.setRule("ignoreMouseEvents", new TypeRule<boolean>(false), false); //这个玩意儿不需要保存
   config.setRule("penerate", new TypeRule<boolean>(false)); //这个玩意儿需要保存
   config.setRule("enableNetworkProxy", new TypeRule<boolean>(false));

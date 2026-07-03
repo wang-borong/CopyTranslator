@@ -113,7 +113,7 @@
         disable-resize-watcher
         :permanent="drawer"
         hide-overlay
-        :width="200"
+        :width="drawerWidth"
         :style="drawerStyle"
         class="rounded-left-drawer"
       >
@@ -124,7 +124,7 @@
             class="drawer-group"
           >
             <div v-if="group.title" class="drawer-group-title">
-              {{ group.title }}
+              {{ trans[group.title] || group.title }}
             </div>
             <Action
               v-for="actionId in group.items"
@@ -134,6 +134,11 @@
             ></Action>
           </div>
         </div>
+        <div
+          class="drawer-resizer"
+          @mousedown.prevent="startDrawerResize"
+          @dblclick.prevent="resetDrawerWidth"
+        ></div>
       </v-navigation-drawer>
 
       <ContrastPanel
@@ -147,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import ActionButton from "../components/ActionButton.vue";
 import ContrastPanel from "../components/ContrastPanel.vue";
 import Action from "../components/Action.vue";
@@ -162,7 +167,6 @@ import {
   hexToRgb,
   colorStatusMap,
 } from "../common/types";
-import { dictionaryTypes } from "../common/dictionary/types";
 import "@/css/shared-styles.css";
 
 const base = useBaseView(() => undefined);
@@ -210,10 +214,7 @@ const drawerGroups = computed(() => {
 });
 
 const valid = computed(() => {
-  return (
-    base.mode.value === "dict" &&
-    (base.config.value.contrastDict || base.layoutType.value === "focus")
-  );
+  return false;
 });
 
 const isMini = computed(() => base.config.value.transparency > 0);
@@ -235,12 +236,11 @@ const nButton = computed(() => {
 const customTranslators = computed<string[]>(() => base.config.value.customTranslators || []);
 
 const engines = computed(() => {
-  const translatorEngines = [
+  return [
     ...(base.config.value["translator-enabled"] || []),
     ...abstractTranslatorTypes,
     ...customTranslators.value,
   ];
-  return base.mode.value === "dict" ? [...dictionaryTypes] : translatorEngines;
 });
 
 const restEngines = computed(() => {
@@ -265,7 +265,14 @@ const actionButtons = computed<ActionButtonType[]>(() => base.config.value.actio
 
 const badgeColor = computed(() => colorStatusMap.get(base.status.value) || "grey");
 
-const barWidth = computed(() => base.config.value.drawer ? 200 : 0);
+const clampDrawerWidth = (value: number) => Math.min(360, Math.max(160, value));
+
+const drawerWidth = computed({
+  get: () => clampDrawerWidth(Number(base.config.value.drawerWidth) || 200),
+  set: (value: number) => base.set("drawerWidth", clampDrawerWidth(value)),
+});
+
+const barWidth = computed(() => base.config.value.drawer ? drawerWidth.value : 0);
 
 const area = computed(() => ({
   "margin-top": base.titlebarHeight.value,
@@ -340,6 +347,33 @@ const penerate = (value: boolean) => {
     base.set("ignoreMouseEvents", false);
   }
 };
+
+let drawerStartX = 0;
+let drawerStartWidth = 0;
+
+const onDrawerResizeMove = (event: MouseEvent) => {
+  drawerWidth.value = drawerStartWidth + event.clientX - drawerStartX;
+};
+
+const stopDrawerResize = () => {
+  document.removeEventListener("mousemove", onDrawerResizeMove);
+  document.removeEventListener("mouseup", stopDrawerResize);
+};
+
+const startDrawerResize = (event: MouseEvent) => {
+  drawerStartX = event.clientX;
+  drawerStartWidth = drawerWidth.value;
+  document.addEventListener("mousemove", onDrawerResizeMove);
+  document.addEventListener("mouseup", stopDrawerResize);
+};
+
+const resetDrawerWidth = () => {
+  drawerWidth.value = 200;
+};
+
+onUnmounted(() => {
+  stopDrawerResize();
+});
 </script>
 
 <style>
@@ -424,5 +458,19 @@ const penerate = (value: boolean) => {
 
 .window-container .rounded-left-drawer .action-label {
   line-height: 18px;
+}
+
+.drawer-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.drawer-resizer:hover {
+  background: rgba(142, 36, 170, 0.45);
 }
 </style>

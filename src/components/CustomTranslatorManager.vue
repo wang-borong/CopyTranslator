@@ -188,7 +188,7 @@
               v-model="providerForm.name"
               :label="trans['providerName'] || '供应商名称'"
               :rules="[rules.required]"
-              hint="例如: OpenAI 官方账号"
+              :hint="trans['providerNameHint'] || '例如: OpenAI 官方账号'"
               outlined
               dense
             ></v-text-field>
@@ -241,14 +241,100 @@
                     dense
                   ></v-text-field>
 
+                  <v-divider class="my-3"></v-divider>
+
+                  <div class="subtitle-2 mb-2">
+                    {{ trans["translationBehavior"] || "翻译行为" }}
+                  </div>
+
+                  <v-select
+                    v-if="providerForm.config"
+                    v-model="providerForm.config.promptPreset"
+                    :items="promptPresetItems"
+                    item-title="title"
+                    item-value="value"
+                    :label="trans['aiPromptPreset'] || '提示词预设'"
+                    outlined
+                    dense
+                  ></v-select>
+
+                  <v-switch
+                    v-if="providerForm.config"
+                    v-model="providerForm.config.preserveFormatting"
+                    :label="trans['preserveFormatting'] || '保留格式'"
+                    color="primary"
+                    hide-details
+                    density="compact"
+                    class="mb-2"
+                  ></v-switch>
+
                   <v-textarea
                     v-if="providerForm.config"
-                    v-model="providerForm.config.prompt"
-                    :label="trans['customPrompt'] || '自定义提示词'"
+                    v-model="providerForm.config.rolePrompt"
+                    :label="trans['translatorRole'] || '翻译角色'"
                     :placeholder="
-                      trans['promptPlaceholder'] || '留空使用默认提示词'
+                      trans['translatorRolePlaceholder'] ||
+                      '专业翻译、技术文档译者、学术译者等'
                     "
-                    rows="4"
+                    rows="2"
+                    auto-grow
+                    outlined
+                    dense
+                  ></v-textarea>
+
+                  <v-textarea
+                    v-if="providerForm.config"
+                    v-model="providerForm.config.systemPrompt"
+                    :label="trans['systemPrompt'] || 'System Prompt'"
+                    :placeholder="
+                      trans['systemPromptPlaceholder'] ||
+                      '留空使用预设 system prompt'
+                    "
+                    rows="3"
+                    auto-grow
+                    outlined
+                    dense
+                  ></v-textarea>
+
+                  <v-textarea
+                    v-if="providerForm.config"
+                    v-model="providerForm.config.userPrompt"
+                    :label="trans['userPrompt'] || trans['customPrompt'] || '自定义提示词'"
+                    :placeholder="
+                      trans['userPromptPlaceholder'] ||
+                      trans['promptPlaceholder'] ||
+                      '使用 {text}, {from}, {to}，留空使用预设模板'
+                    "
+                    rows="5"
+                    auto-grow
+                    outlined
+                    dense
+                  ></v-textarea>
+
+                  <v-textarea
+                    v-if="providerForm.config"
+                    v-model="providerForm.config.styleGuide"
+                    :label="trans['styleGuide'] || '风格指南'"
+                    :placeholder="
+                      trans['styleGuidePlaceholder'] ||
+                      '例如：简洁、正式、保留产品名称'
+                    "
+                    rows="3"
+                    auto-grow
+                    outlined
+                    dense
+                  ></v-textarea>
+
+                  <v-textarea
+                    v-if="providerForm.config"
+                    v-model="providerForm.config.glossary"
+                    :label="trans['glossary'] || '术语表'"
+                    :placeholder="
+                      trans['glossaryPlaceholder'] ||
+                      '每行一个术语，例如：cache = 缓存'
+                    "
+                    rows="3"
+                    auto-grow
                     outlined
                     dense
                   ></v-textarea>
@@ -297,7 +383,7 @@
               <v-select
                 v-model="testFrom"
                 :items="testLanguages"
-                label="From"
+                :label="trans['sourceLanguage'] || 'From'"
                 outlined
                 dense
               ></v-select>
@@ -306,7 +392,7 @@
               <v-select
                 v-model="testTo"
                 :items="testLanguages"
-                label="To"
+                :label="trans['targetLanguage'] || 'To'"
                 outlined
                 dense
               ></v-select>
@@ -347,7 +433,11 @@
 import { ref, computed, onMounted } from "vue";
 import { customTranslatorManager } from "@/common/translate/custom-translators";
 import { fetchModels } from "@/common/translate/model-fetcher";
-import { ProviderConfig } from "@/common/translate/types";
+import {
+  aiPromptPresets,
+  AiPromptPreset,
+  ProviderConfig,
+} from "@/common/translate/types";
 import {
   providerTemplates,
   getProviderTemplate,
@@ -382,20 +472,49 @@ const testModel = ref("");
 
 const testLanguages = ["en", "zh-CN", "zh-TW", "ja", "ko", "fr", "es", "de", "ru"];
 
-const providerForm = ref<ProviderConfig>({
+type ProviderBehaviorConfig = NonNullable<ProviderConfig["config"]>;
+
+const createDefaultBehaviorConfig = (): ProviderBehaviorConfig => ({
+    temperature: 0.3,
+    maxTokens: 4000,
+    promptPreset: "faithful",
+    rolePrompt: "",
+    systemPrompt: "",
+    userPrompt: "",
+    styleGuide: "",
+    glossary: "",
+    preserveFormatting: true,
+});
+
+const normalizeBehaviorConfig = (
+  cfg?: ProviderConfig["config"]
+): ProviderBehaviorConfig => {
+  const normalized = {
+    ...createDefaultBehaviorConfig(),
+    ...(cfg || {}),
+  };
+  if (!normalized.userPrompt && normalized.prompt && normalized.prompt !== "default") {
+    normalized.userPrompt = normalized.prompt;
+  }
+  if (!aiPromptPresets.includes(normalized.promptPreset as AiPromptPreset)) {
+    normalized.promptPreset = "faithful";
+  }
+  normalized.preserveFormatting = normalized.preserveFormatting !== false;
+  return normalized;
+};
+
+const createDefaultProviderForm = (): ProviderConfig => ({
   id: "",
   name: "",
   providerType: "custom",
   apiBase: "https://",
   apiKey: "",
   enabledModels: [],
-  config: {
-    temperature: 0.3,
-    maxTokens: 4000,
-    prompt: "",
-  },
+  config: createDefaultBehaviorConfig(),
   enabled: true,
 });
+
+const providerForm = ref<ProviderConfig>(createDefaultProviderForm());
 
 const templateItems = computed(() => {
   return providerTemplates.map((t) => {
@@ -410,6 +529,13 @@ const templateItems = computed(() => {
     };
   });
 });
+
+const promptPresetItems = computed(() =>
+  aiPromptPresets.map((value) => ({
+    title: trans.value[`aiPromptPreset_${value}`] || value,
+    value,
+  }))
+);
 
 const rules = computed(() => ({
   required: (v: string) => !!v || trans.value["required"] || "此项必填",
@@ -427,6 +553,7 @@ const loadProviders = () => {
   const baseProviders = customTranslatorManager.getAllProviders();
   providers.value = baseProviders.map((p) => ({
     ...p,
+    config: normalizeBehaviorConfig(p.config),
     availableModels: p.enabledModels.length > 0 ? [...p.enabledModels] : undefined,
     fetchingModels: false,
     modelFetchError: "",
@@ -472,7 +599,7 @@ const fetchProviderModels = async (provider: ProviderWithUI) => {
       provider.availableModels = models;
     }
   } catch (error: any) {
-    provider.modelFetchError = error.message || "获取模型列表失败";
+    provider.modelFetchError = error.message || trans.value["modelFetchFailed"] || "获取模型列表失败";
     const template = getProviderTemplate(provider.providerType);
     if (template && template.recommendedModels.length > 0) {
       provider.availableModels = template.recommendedModels;
@@ -489,7 +616,10 @@ const updateProviderModels = (providerId: string, models: string[]) => {
 
 const editProvider = (provider: ProviderConfig) => {
   editingProvider.value = provider;
-  providerForm.value = JSON.parse(JSON.stringify(provider));
+  providerForm.value = {
+    ...JSON.parse(JSON.stringify(provider)),
+    config: normalizeBehaviorConfig(provider.config),
+  };
   selectedTemplate.value = "";
   showAddProviderDialog.value = true;
 };
@@ -504,13 +634,7 @@ const removeProviderConfirm = (id: string) => {
 };
 
 const saveProvider = () => {
-  if (!providerForm.value.config) {
-    providerForm.value.config = {
-      temperature: 0.3,
-      maxTokens: 4000,
-      prompt: "",
-    };
-  }
+  providerForm.value.config = normalizeBehaviorConfig(providerForm.value.config);
 
   if (editingProvider.value) {
     customTranslatorManager.updateProvider(editingProvider.value.id, providerForm.value);
@@ -541,20 +665,7 @@ const closeProviderDialog = () => {
 };
 
 const resetProviderForm = () => {
-  providerForm.value = {
-    id: "",
-    name: "",
-    providerType: "custom",
-    apiBase: "https://",
-    apiKey: "",
-    enabledModels: [],
-    config: {
-      temperature: 0.3,
-      maxTokens: 4000,
-      prompt: "",
-    },
-    enabled: true,
-  };
+  providerForm.value = createDefaultProviderForm();
   selectedTemplate.value = "";
 };
 

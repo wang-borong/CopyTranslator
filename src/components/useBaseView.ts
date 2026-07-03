@@ -29,10 +29,9 @@ export function useBaseView(getModifiedText: () => string | undefined) {
 
   const currentEngine = computed(() => {
     switch (mode.value) {
-      case "dict":
-        return base.config.value.dictionaryType;
       case "diff":
         return "copytranslator";
+      case "dict":
       case "normal":
       case "none":
         return base.config.value.translatorType;
@@ -49,6 +48,40 @@ export function useBaseView(getModifiedText: () => string | undefined) {
 
   const sharedResult = computed(() => base.sharedResult.value);
   const dictResult = computed(() => base.dictResult.value || {});
+
+  const engineNotice = computed(() => {
+    const result = sharedResult.value;
+    if (
+      base.status.value !== "Translating" &&
+      mode.value === "normal" &&
+      result &&
+      result.engine !== "" &&
+      result.engine !== currentEngine.value
+    ) {
+      const prompt1 = base.trans.value["fallbackPrompt1"] || "";
+      const prompt2 = base.trans.value["fallbackPrompt2"] || "";
+      return `${currentEngine.value} ${prompt1}${result.engine}${prompt2}`;
+    }
+    if (currentEngine.value === "keyan") {
+      return base.trans.value["keyanSlogan"] || "";
+    }
+    if (currentEngine.value === "stepfun") {
+      return base.trans.value["stepfunSlogan"] || "";
+    }
+    return "";
+  });
+
+  const engineNoticeClickable = computed(() =>
+    ["keyan", "stepfun"].includes(currentEngine.value)
+  );
+
+  const openEngineNotice = () => {
+    if (currentEngine.value === "keyan") {
+      toKeyan();
+    } else if (currentEngine.value === "stepfun") {
+      toStepfun();
+    }
+  };
 
   const layoutConfig = computed(() => base.config.value[layoutType.value] || {});
   const sourceSize = computed(() => layoutConfig.value.sourceFontSize || 14);
@@ -121,7 +154,7 @@ export function useBaseView(getModifiedText: () => string | undefined) {
   const command = () => {
     const text = getModifiedText();
     eventBus.at("dispatch", text);
-    logger.toast(`执行命令 ${text}`);
+    logger.toast(`${logger.text("commandExecuted", "执行命令")} ${text}`);
   };
 
   return {
@@ -133,6 +166,9 @@ export function useBaseView(getModifiedText: () => string | undefined) {
     layoutType,
     sharedResult,
     dictResult,
+    engineNotice,
+    engineNoticeClickable,
+    openEngineNotice,
     sourceSize,
     resultSize,
     diffSize,

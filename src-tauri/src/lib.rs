@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::Cursor;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
@@ -13,11 +14,34 @@ use tauri::{AppHandle, Emitter, Manager};
 
 static LISTEN_CLIPBOARD: AtomicBool = AtomicBool::new(true);
 
-fn get_config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+fn legacy_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
-    let base_dir = home.join("copytranslator");
-    let _ = std::fs::create_dir_all(&base_dir);
-    Ok(base_dir.join("copytranslator.json"))
+    Ok(home.join("copytranslator").join("copytranslator.json"))
+}
+
+fn migrate_legacy_config(app: &tauri::AppHandle, config_path: &PathBuf) -> Result<(), String> {
+    if config_path.exists() {
+        return Ok(());
+    }
+
+    let old_path = legacy_config_path(app)?;
+    if old_path.exists() {
+        std::fs::copy(old_path, config_path).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+fn get_config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let base_dir = app
+        .path()
+        .config_dir()
+        .map_err(|e| e.to_string())?
+        .join("copytranslator");
+    std::fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
+    let config_path = base_dir.join("copytranslator.json");
+    migrate_legacy_config(app, &config_path)?;
+    Ok(config_path)
 }
 
 #[tauri::command]
@@ -34,6 +58,51 @@ fn read_config(app: tauri::AppHandle) -> Result<String, String> {
 fn write_config(app: tauri::AppHandle, content: String) -> Result<(), String> {
     let path = get_config_path(&app)?;
     std::fs::write(path, content).map_err(|e| e.to_string())
+}
+
+fn open_system_path(path: PathBuf) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let path_arg = path.to_string_lossy().to_string();
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", path_arg.as_str()])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn open_config_file(app: tauri::AppHandle) -> Result<(), String> {
+    let path = get_config_path(&app)?;
+    if !path.exists() {
+        std::fs::write(&path, "{}").map_err(|e| e.to_string())?;
+    }
+    open_system_path(path)
+}
+
+#[tauri::command]
+fn open_config_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let path = get_config_path(&app)?;
+    let folder = path
+        .parent()
+        .ok_or_else(|| "config folder not found".to_string())?
+        .to_path_buf();
+    open_system_path(folder)
 }
 
 #[tauri::command]
@@ -489,6 +558,8 @@ pub fn run() {
             simulate_paste,
             read_config,
             write_config,
+            open_config_file,
+            open_config_folder,
             open_url,
             read_clipboard_image,
             baidu_ocr,

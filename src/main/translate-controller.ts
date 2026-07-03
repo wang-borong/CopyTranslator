@@ -80,6 +80,7 @@ class TranslateController {
   nextEngines?: (TranslatorType | string)[];
 
   incrementCounter: number = 0; //增量复制计数器
+  clipboardWatchBound: boolean = false;
 
   translator: Compound = new Compound([...translatorTypes], "google", {});
   dictionary: Polymer = new Polymer("youdao");
@@ -151,12 +152,12 @@ class TranslateController {
         break;
       case "copySource":
         clipboard.writeText(this.text);
-        logger.toast("已复制原文");
+        logger.toastKey("sourceCopied", "已复制原文");
         break;
       case "copyResult":
         if (!param) {
           clipboard.writeText(this.resultString);
-          logger.toast("已复制译文");
+          logger.toastKey("resultCopied", "已复制译文");
         } else {
           //带参数的话就是复制特定的引擎的结果
           const buffer = this.getResultBuffer(param) as
@@ -230,7 +231,9 @@ class TranslateController {
     store.dispatch("setLanguages", {
       sources: this.translator.getSupportSourceLanguages(),
       targets: this.translator.getSupportTargetLanguages(),
-    }); //update-view插件会帮我们处理的
+    });
+    eventBus.at("sourceLanguage");
+    eventBus.at("targetLanguage");
   }
 
   get<T>(identifier: Identifier) {
@@ -478,7 +481,7 @@ class TranslateController {
       } catch (e) {
         logger.log(e);
         logger.log("detect lang fail");
-        logger.toast("检测语言失败");
+        logger.toastKey("detectLanguageFailed", "检测语言失败");
       }
     }
 
@@ -658,7 +661,7 @@ class TranslateController {
         this.translateResult = undefined;
         this.sync();
         logger.error(err);
-        logger.toast("翻译失败");
+        logger.toastKey("translateFailed", "翻译失败");
       });
   }
 
@@ -731,20 +734,23 @@ class TranslateController {
       // Ensure status is green (Listen) immediately
       this.setCurrentStatus();
 
-      clipboard.on("text-changed", () => {
-        this.checkClipboard(true);
-      });
-      clipboard.on("image-changed", () => {
-        // OCR 相关
-        if (!this.get<boolean>("enableOCR")) {
-          return;
-        }
-        if (recognizer.enabled()) {
-          logger.toast("检测到剪贴板图片");
-          recognizer.recognize(clipboard.readImage().toDataURL());
-          return;
-        }
-      });
+      if (!this.clipboardWatchBound) {
+        clipboard.on("text-changed", () => {
+          this.checkClipboard(true);
+        });
+        clipboard.on("image-changed", () => {
+          // OCR 相关
+          if (!this.get<boolean>("enableOCR")) {
+            return;
+          }
+          if (recognizer.enabled()) {
+            logger.toastKey("clipboardImageDetected", "检测到剪贴板图片");
+            recognizer.recognize(clipboard.readImage().toDataURL());
+            return;
+          }
+        });
+        this.clipboardWatchBound = true;
+      }
       clipboard.startWatching();
       // Delay initial check to avoid startup race conditions and allow network initialization
       setTimeout(() => {
@@ -759,11 +765,11 @@ class TranslateController {
     const key_config = this.get(engine) as KeyConfig;
     const rule = config.getRule(engine);
     if (rule.check && !rule.check(key_config)) {
-      logger.toast("请检查密钥配置");
+      logger.toastKey("checkKeyConfig", "请检查密钥配置");
       return;
     } else if (!rule.check && !examToken(key_config)) {
       // fallback到通用的检查方法，如果没有特殊检查方法的话
-      logger.toast("请检查密钥配置");
+      logger.toastKey("checkKeyConfig", "请检查密钥配置");
       return;
     }
 

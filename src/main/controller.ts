@@ -173,7 +173,7 @@ class Controller extends MainController {
         break;
       case "simulateCopy":
         setTimeout(() => {
-          logger.toast("模拟复制");
+          logger.toastKey("simulateCopyDone", "模拟复制");
           simulate.copy();
         }, 100);
         break;

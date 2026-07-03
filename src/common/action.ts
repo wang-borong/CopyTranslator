@@ -35,6 +35,12 @@ import { getEnabledWithCustomIds } from "./translate/translators";
 type Actions = Map<Identifier, ActionView>;
 type PostLocaleFunc = (x: string) => string;
 
+function getLanguageLabel(lang: Language): string {
+  const locale = getLanguageLocales(store.getters.localeSetting as Language);
+  const fallbackLocale = getLanguageLocales("en");
+  return locale[lang] || fallbackLocale[lang] || lang;
+}
+
 function subMenuGenerator(
   identifier: Identifier,
   list: Array<string>,
@@ -268,11 +274,10 @@ class ActionManager {
       isSource: boolean = true
     ): SubMenuGenerator {
       return (identifier: string) => {
-        const l = getLanguageLocales(store.getters.localeSetting);
         return getLanguages(isSource).map((e) => {
           return {
             id: compose([identifier, e]),
-            label: l[e],
+            label: getLanguageLabel(e),
             type: "checkbox",
           };
         });
@@ -401,6 +406,7 @@ class ActionManager {
       )
     );
     this.append(listAction("titlebarHeight", heights, "appearance"));
+    this.append(constantAction("drawerWidth", "appearance"));
     this.append(listAction("contentPadding", paddings, "appearance"));
     this.append(listAction("contentLineHeight", lineHeights, "appearance"));
     this.append(switchAction("penerate", "appearance"));
@@ -559,6 +565,7 @@ class ActionManager {
       backgroundColor: { group: "主题与颜色", span: 0.5 },
       transparency: { group: "布局", span: 0.5 },
       titlebarHeight: { group: "布局", span: 0.5 },
+      drawerWidth: { group: "布局", span: 0.5 },
       contentPadding: { group: "布局", span: 0.5 },
       contentLineHeight: { group: "布局", span: 0.5 },
       layoutType: { group: "布局", span: 0.5 },

@@ -36,19 +36,19 @@ export class Recognizer {
 
   async capture() {
     if (!this.enabled()) {
-      logger.toast("请先配置百度 OCR");
+      logger.toastKey("baiduOcrConfigRequired", "请先配置百度 OCR");
       return;
     }
     try {
       const image = await invoke<string | null>("read_clipboard_image");
       if (!image) {
-        logger.toast("剪贴板中没有图片");
+        logger.toastKey("clipboardNoImage", "剪贴板中没有图片");
         return;
       }
       await this.recognize(image);
     } catch (err) {
       console.error(err);
-      logger.toast("读取剪贴板图片失败");
+      logger.toastKey("clipboardImageReadFailed", "读取剪贴板图片失败");
     }
   }
 
@@ -91,14 +91,14 @@ export class Recognizer {
         languageType: this.getLanguage(),
       });
       if (!text.trim()) {
-        logger.toast("OCR未识别到文字");
+        logger.toastKey("ocrNoText", "OCR未识别到文字");
         return;
       }
-      logger.toast("OCR完成，正在翻译");
+      logger.toastKey("ocrTranslateStarted", "OCR完成，正在翻译");
       eventBus.at("dispatch", "translate", text);
     } catch (err: any) {
       console.log(err);
-      logger.toast(`OCR失败: ${String(err)}`);
+      logger.toast(`${logger.text("ocrFailed", "OCR失败")}: ${String(err)}`);
     }
   }
 }

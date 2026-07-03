@@ -8,7 +8,7 @@
   >
     <p class="dictSrc noMargin">[{{ dictResult.words }}]</p>
     <div v-if="dictResult.phonetics && dictResult.phonetics.length != 0">
-      <p class="notation noMargin">Phonetic:</p>
+      <p class="notation noMargin">{{ trans["phonetic"] }}:</p>
       <span
         class="dictPhonetic noMargin"
         v-for="item in dictResult.phonetics"
@@ -18,7 +18,7 @@
       </span>
     </div>
     <div v-if="dictResult.explains && dictResult.explains.length > 0">
-      <p class="notation noMargin">Basic Explains:</p>
+      <p class="notation noMargin">{{ trans["basicExplains"] }}:</p>
       <p
         class="dictExp noMargin"
         v-for="item in dictResult.explains"
@@ -38,6 +38,7 @@ const base = useBaseView(() => undefined);
 const dictResult = base.dictResult;
 const fontColor = base.fontColor;
 const dictSize = base.dictSize;
+const trans = base.trans;
 
 const dictStyle = computed(() => {
   return {

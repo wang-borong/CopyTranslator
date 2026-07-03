@@ -109,14 +109,10 @@ const tooltipText = (actionButton: ActionButton): string => {
   if (actionButton.tooltip === undefined) {
     let descs = [];
     if (actionButton.left_click !== undefined) {
-      descs.push(
-        `${trans.value["left_click"] || "左击"}${getActionName(actionButton.left_click)}`
-      );
+      descs.push(formatActionHint(trans.value["left_click"] || "左击", getActionName(actionButton.left_click)));
     }
     if (actionButton.right_click !== undefined) {
-      descs.push(
-        `${trans.value["right_click"] || "右击"}${getActionName(actionButton.right_click)}`
-      );
+      descs.push(formatActionHint(trans.value["right_click"] || "右击", getActionName(actionButton.right_click)));
     }
     return descs.join("|");
   } else {
@@ -126,6 +122,10 @@ const tooltipText = (actionButton: ActionButton): string => {
       return actionButton.tooltip;
     }
   }
+};
+
+const formatActionHint = (prefix: string, actionName: string) => {
+  return /[A-Za-z0-9]$/.test(prefix) ? `${prefix} ${actionName}` : `${prefix}${actionName}`;
 };
 
 onMounted(() => {

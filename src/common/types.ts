@@ -76,6 +76,7 @@ export const constantActionTypes = [
   "interfaceFontFamily",
   "contentFontFamily",
   "titlebarHeight",
+  "drawerWidth",
   "configSnapshots",
   "transparency",
   "contentPadding",

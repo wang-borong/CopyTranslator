@@ -2,7 +2,7 @@
   <div class="options-root">
     <div v-for="group in groupedActions" :key="group.key" class="options-group">
       <div v-if="group.title" class="options-group-title">
-        {{ group.title }}
+        {{ trans[group.title] || group.title }}
       </div>
       <div class="options-grid">
         <div

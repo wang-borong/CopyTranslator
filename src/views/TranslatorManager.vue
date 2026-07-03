@@ -271,7 +271,7 @@ const getConfigStatus = (translatorId: string) => {
 
 const getCheckboxTitle = (translatorId: string): string => {
   if (translatorId === "google" && enabledTranslators.value.length <= 1) {
-    return "至少需要启用一个翻译器";
+    return trans.value["leastOneTranslator"] || "至少需要启用一个翻译器";
   }
 
   const status = getConfigStatus(translatorId);

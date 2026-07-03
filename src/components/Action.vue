@@ -91,6 +91,7 @@
             <v-text-field
               v-model="value"
               class="action-control"
+              :type="constantInputType"
               dense
               hide-details
             ></v-text-field>
@@ -127,6 +128,7 @@ import MultiSelect from "./MultiSelect.vue";
 import SimpleButton from "./SimpleButton.vue";
 import bus from "../common/event-bus";
 import {
+  compose,
   swatches,
   snapshotNameRules,
   isValidSnapshotName,
@@ -155,7 +157,7 @@ const tooltip = computed(() => {
 
 const command = computed({
   get: () => {
-    return `${props.identifier}-${value.value}`;
+    return compose([String(props.identifier), String(value.value)]);
   },
   set: (cmd: string) => {
     base.callback(cmd);
@@ -165,9 +167,21 @@ const command = computed({
 const value = computed({
   get: () => base.config.value[props.identifier],
   set: (val: any) => {
-    base.callback(props.identifier, val);
+    base.callback(props.identifier, normalizeConfigValue(val));
   }
 });
+
+const constantInputType = computed(() =>
+  typeof base.config.value[props.identifier] === "number" ? "number" : "text"
+);
+
+const normalizeConfigValue = (val: any) => {
+  if (typeof base.config.value[props.identifier] !== "number") {
+    return val;
+  }
+  const numericValue = Number(val);
+  return Number.isFinite(numericValue) ? numericValue : val;
+};
 
 const color = computed({
   get: () => {

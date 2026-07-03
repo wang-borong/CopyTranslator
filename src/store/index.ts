@@ -2,6 +2,7 @@ import { createPinia, defineStore } from "pinia";
 import { emptySharedResult } from "@/common/translate/types";
 import { emptyDictResult } from "@/common/dictionary/types";
 import { zh_cn, en } from "@/common/locales";
+import { observers } from "./plugins/observe";
 
 export const pinia = createPinia();
 
@@ -91,12 +92,30 @@ class StoreWrapper {
   dispatch(actionName: string, payload: any) {
     if (this.store[actionName]) {
       this.store[actionName](payload);
+      if (["setConfig", "updateConfig"].includes(actionName)) {
+        this.notifyConfigObservers(payload);
+      }
     }
   }
 
   commit(mutationName: string, payload: any) {
     if (this.store[mutationName]) {
       this.store[mutationName](payload);
+    }
+  }
+
+  private notifyConfigObservers(configPatch: any) {
+    if (!configPatch || typeof configPatch !== "object") {
+      return;
+    }
+    for (const key of Object.keys(configPatch)) {
+      const value = configPatch[key];
+      for (const observer of observers) {
+        const resolved = observer.postSet(key as any, value);
+        if (resolved) {
+          break;
+        }
+      }
     }
   }
 }

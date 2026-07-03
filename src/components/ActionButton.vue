@@ -45,14 +45,10 @@ const tooltipText = computed(() => {
   if (props.tooltip === undefined) {
     let descs = [];
     if (props.left_click !== undefined) {
-      descs.push(
-        `${trans.value["left_click"] || "左击"}${getActionName(props.left_click)}`
-      );
+      descs.push(formatActionHint(trans.value["left_click"] || "左击", getActionName(props.left_click)));
     }
     if (props.right_click !== undefined) {
-      descs.push(
-        `${trans.value["right_click"] || "右击"}${getActionName(props.right_click)}`
-      );
+      descs.push(formatActionHint(trans.value["right_click"] || "右击", getActionName(props.right_click)));
     }
     return descs.join("，");
   } else {
@@ -70,6 +66,10 @@ const getActionName = (name: string) => {
   } else {
     return name;
   }
+};
+
+const formatActionHint = (prefix: string, actionName: string) => {
+  return /[A-Za-z0-9]$/.test(prefix) ? `${prefix} ${actionName}` : `${prefix}${actionName}`;
 };
 
 const handle = (identifier: string | undefined, isLeft: boolean) => {

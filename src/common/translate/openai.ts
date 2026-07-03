@@ -3,16 +3,76 @@ import {
   BaseTranslator,
   TranslateQueryResult,
   TranslateError,
+  AiPromptPreset,
 } from "./types";
-import { OpenAIConfig } from "./types";
+import { OpenAIConfigWithBehavior } from "./types";
 
-// 默认提示词模板
-const DEFAULT_PROMPT = `You are a professional translator. Translate the following text to {to}. Only return the translated text without any explanation or additional information.
+type PromptProfile = {
+  system: string;
+  user: string;
+  temperature: number;
+};
 
-Text to translate:
-{text}
+const DEFAULT_ROLE_PROMPT =
+  "You are a professional translation engine. You understand context, terminology, tone, and formatting.";
 
-Translation:`;
+const DEFAULT_USER_PROMPT = `Translate the following text from {from} to {to}.
+
+Text:
+{text}`;
+
+const PROMPT_PROFILES: Record<AiPromptPreset, PromptProfile> = {
+  faithful: {
+    system:
+      "Translate accurately and faithfully. Preserve meaning, terminology, numbers, placeholders, links, Markdown, and line breaks. Output only the translation.",
+    user: DEFAULT_USER_PROMPT,
+    temperature: 0.2,
+  },
+  natural: {
+    system:
+      "Translate naturally for native readers while keeping the original meaning. Avoid literal wording when it sounds awkward. Output only the translation.",
+    user: DEFAULT_USER_PROMPT,
+    temperature: 0.35,
+  },
+  technical: {
+    system:
+      "Translate as a technical translator. Preserve code, commands, API names, product names, units, placeholders, and Markdown. Use precise technical terminology. Output only the translation.",
+    user: DEFAULT_USER_PROMPT,
+    temperature: 0.2,
+  },
+  academic: {
+    system:
+      "Translate in a formal academic style. Preserve citations, terminology, equations, Markdown, and paragraph structure. Output only the translation.",
+    user: DEFAULT_USER_PROMPT,
+    temperature: 0.25,
+  },
+  casual: {
+    system:
+      "Translate in a clear, conversational style for everyday readers. Keep the meaning and tone, but make the result fluent. Output only the translation.",
+    user: DEFAULT_USER_PROMPT,
+    temperature: 0.45,
+  },
+  custom: {
+    system: DEFAULT_ROLE_PROMPT,
+    user: DEFAULT_USER_PROMPT,
+    temperature: 0.3,
+  },
+};
+
+const DEFAULT_CONFIG = {
+  apiBase: "https://api.openai.com/v1",
+  apiKey: "",
+  model: "gpt-3.5-turbo",
+  promptPreset: "faithful" as AiPromptPreset,
+  rolePrompt: "",
+  systemPrompt: "",
+  userPrompt: "",
+  styleGuide: "",
+  glossary: "",
+  preserveFormatting: true,
+  temperature: 0.3,
+  maxTokens: 2000,
+};
 
 // 语言映射表 - 将 Language 映射为语言全名
 const langMap: [Language, string][] = [
@@ -150,7 +210,7 @@ export interface OpenAIChatResponse {
   };
 }
 
-export class OpenAI extends BaseTranslator<OpenAIConfig> {
+export class OpenAI extends BaseTranslator<OpenAIConfigWithBehavior> {
   name: string = "openai";
 
   /** Translator lang to language name */
@@ -161,14 +221,7 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
     langMap.map(([translatorLang, lang]) => [lang, translatorLang])
   );
 
-  config: OpenAIConfig = {
-    apiBase: "https://api.openai.com/v1",
-    apiKey: "",
-    model: "gpt-3.5-turbo",
-    prompt: DEFAULT_PROMPT,
-    temperature: 0.3,
-    maxTokens: 2000,
-  };
+  config: OpenAIConfigWithBehavior = { ...DEFAULT_CONFIG };
 
   constructor(options: { axios: any; config: any }) {
     super(options.axios);
@@ -179,10 +232,14 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
       this.config.apiKey = options.config.apiKey || "";
       this.config.model = options.config.model || this.config.model;
 
-      // 如果用户提供了自定义提示词，使用它；"default" 表示使用默认提示词
-      if (options.config.prompt && options.config.prompt !== "default") {
-        this.config.prompt = options.config.prompt;
-      }
+      this.config.promptPreset = this.getPromptPreset(options.config.promptPreset);
+      this.config.rolePrompt = options.config.rolePrompt || "";
+      this.config.systemPrompt = options.config.systemPrompt || "";
+      this.config.userPrompt = options.config.userPrompt || "";
+      this.config.styleGuide = options.config.styleGuide || "";
+      this.config.glossary = options.config.glossary || "";
+      this.config.preserveFormatting = options.config.preserveFormatting !== false;
+      this.config.prompt = options.config.prompt || "";
 
       // 将字符串转换为数字
       if (options.config.temperature) {
@@ -200,22 +257,94 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
     }
   }
 
-  /**
-   * 构建提示词
-   */
-  private buildPrompt(text: string, from: Language, to: Language): string {
+  private getPromptPreset(value: unknown): AiPromptPreset {
+    if (
+      value === "faithful" ||
+      value === "natural" ||
+      value === "technical" ||
+      value === "academic" ||
+      value === "casual" ||
+      value === "custom"
+    ) {
+      return value;
+    }
+    return "faithful";
+  }
+
+  private getPromptProfile(config: OpenAIConfigWithBehavior): PromptProfile {
+    return PROMPT_PROFILES[this.getPromptPreset(config.promptPreset)];
+  }
+
+  private renderTemplate(
+    template: string,
+    text: string,
+    from: Language,
+    to: Language,
+    config: OpenAIConfigWithBehavior
+  ): string {
     const fromLang = OpenAI.langMap.get(from) || from;
     const toLang = OpenAI.langMap.get(to) || to;
-    const prompt = this.config.prompt || DEFAULT_PROMPT;
+    const replacements: Record<string, string> = {
+      from: fromLang,
+      fromName: fromLang,
+      source: fromLang,
+      sourceLanguage: fromLang,
+      to: toLang,
+      toName: toLang,
+      target: toLang,
+      targetLanguage: toLang,
+      text,
+      role: config.rolePrompt || DEFAULT_ROLE_PROMPT,
+      glossary: config.glossary || "",
+      styleGuide: config.styleGuide || "",
+      style: config.styleGuide || "",
+    };
 
-    // 如果源语言是 auto，就不在提示词中指定源语言，让 LLM 自动识别
-    const actualPrompt =
-      from === "auto" ? prompt.replace(/from {from} /g, "") : prompt;
+    return template.replace(/\{([a-zA-Z]+)\}/g, (match, key) => {
+      return Object.prototype.hasOwnProperty.call(replacements, key)
+        ? replacements[key]
+        : match;
+    });
+  }
 
-    return actualPrompt
-      .replace(/{from}/g, fromLang)
-      .replace(/{to}/g, toLang)
-      .replace(/{text}/g, text);
+  private buildMessages(
+    text: string,
+    from: Language,
+    to: Language,
+    config: OpenAIConfigWithBehavior
+  ): OpenAIChatMessage[] {
+    const profile = this.getPromptProfile(config);
+    const systemTemplate = config.systemPrompt?.trim() || profile.system;
+    const userTemplate =
+      config.userPrompt?.trim() ||
+      (config.prompt && config.prompt !== "default" ? config.prompt : profile.user);
+    const systemSections = [
+      config.rolePrompt?.trim() || DEFAULT_ROLE_PROMPT,
+      this.renderTemplate(systemTemplate, text, from, to, config),
+    ];
+
+    if (config.preserveFormatting !== false) {
+      systemSections.push(
+        "Preserve line breaks, Markdown, code blocks, inline code, HTML tags, variables, and placeholders unless translation requires otherwise."
+      );
+    }
+    if (config.styleGuide?.trim()) {
+      systemSections.push(`Style guide:\n${config.styleGuide.trim()}`);
+    }
+    if (config.glossary?.trim()) {
+      systemSections.push(`Glossary:\n${config.glossary.trim()}`);
+    }
+
+    return [
+      {
+        role: "system",
+        content: systemSections.filter(Boolean).join("\n\n"),
+      },
+      {
+        role: "user",
+        content: this.renderTemplate(userTemplate, text, from, to, config),
+      },
+    ];
   }
 
   /**
@@ -223,7 +352,7 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
    */
   private async callOpenAI(
     messages: OpenAIChatMessage[],
-    config: OpenAIConfig
+    config: OpenAIConfigWithBehavior
   ): Promise<OpenAIChatResponse> {
     const apiUrl = config.apiBase.endsWith("/")
       ? `${config.apiBase}chat/completions`
@@ -232,7 +361,10 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
     const requestData: OpenAIChatRequest = {
       model: config.model || "gpt-3.5-turbo",
       messages: messages,
-      temperature: config.temperature !== undefined ? config.temperature : 0.3,
+      temperature:
+        config.temperature !== undefined
+          ? config.temperature
+          : this.getPromptProfile(config).temperature,
       max_tokens: config.maxTokens !== undefined ? config.maxTokens : 2000,
       stream: false,
     };
@@ -270,7 +402,7 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
     text: string,
     from: Language,
     to: Language,
-    config: OpenAIConfig
+    config: OpenAIConfigWithBehavior
   ): Promise<TranslateQueryResult> {
     // 检查 API 密钥是否配置
     if (!config.apiKey) {
@@ -278,16 +410,7 @@ export class OpenAI extends BaseTranslator<OpenAIConfig> {
       throw new TranslateError("API_SERVER_ERROR");
     }
 
-    // 构建提示词
-    const prompt = this.buildPrompt(text, from, to);
-
-    // 调用 OpenAI API
-    const messages: OpenAIChatMessage[] = [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ];
+    const messages = this.buildMessages(text, from, to, config);
 
     try {
       const response = await this.callOpenAI(messages, config);
