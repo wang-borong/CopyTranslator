@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version, for example 13.0.0 or v13.0.0"
+        description: "Release version, for example 13.0.1 or v13.0.1"
         required: true
         type: string
       draft:

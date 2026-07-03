@@ -2,6 +2,21 @@
 
 本仓库使用 GitHub Releases 作为正式发布记录，文档站也保留按大版本整理的更新日志。
 
+## v13.0.1 澄明 - 2026-07-03
+
+v13.0.1 是 v13 的维护版本，重点修复输入区编辑快捷键，并补充 Arch Linux 发布包。
+
+### 修复
+
+- 修复原文输入框中 `Ctrl+Z` / `Cmd+Z` 无法撤销的问题。
+- 修复输入区内剪切、复制、粘贴、全选、重做等标准编辑快捷键被窗口快捷键抢占的问题。
+- 补齐窗口内 role 快捷键处理，配置中的退出、最小化、重载、全屏、缩放等动作现在有明确运行路径。
+
+### 发布
+
+- Release CI 新增 Arch Linux 安装包 `copytranslator.tar.zst`。
+- Arch Linux 包包含 pacman 可识别的 `.PKGINFO`、desktop 文件、hicolor 图标和 license 文件。
+
 ## v13.0.0 澄明 - 2026-07-03
 
 v13 是 CopyTranslator 的 Tauri 2 迁移优化版本。此版本移除 Electron 运行时，重建桌面端窗口、托盘、配置、快捷键、发布构建和更新检查链路，并继续强化 AI 翻译与 OCR 工作流。
@@ -25,4 +40,3 @@ v13 是 CopyTranslator 的 Tauri 2 迁移优化版本。此版本移除 Electron
 - AI 翻译和 OCR 会把对应文本或图片发送给所配置的第三方服务，使用前请确认服务条款和隐私策略。
 
 完整说明请查看 [v13 更新日志](docs/changelogs/v13.md) 和 [v13 使用指南](docs/guide/13.0.0.md)。
-
