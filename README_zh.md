@@ -169,7 +169,7 @@ GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。Li
 本地更新发布版本号：
 
 ```bash
-npm run set-release-version -- 13.0.1
+npm run set-release-version -- 13.0.2
 ```
 
 正式下载地址：
