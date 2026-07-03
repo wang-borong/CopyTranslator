@@ -116,7 +116,7 @@ API Key 会保存在本地配置文件中，请将配置目录视为敏感数据
 环境要求：
 
 - Node.js 20 或更新版本
-- Rust stable，建议 Rust 1.77.2 或更新版本
+- Rust stable，建议 Rust 1.85.0 或更新版本
 - Tauri 2 所需的系统 WebView 和打包依赖
 
 安装依赖：
@@ -168,7 +168,7 @@ GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。
 本地更新发布版本号：
 
 ```bash
-npm run set-release-version -- 12.1.1
+npm run set-release-version -- 13.0.0
 ```
 
 正式下载地址：

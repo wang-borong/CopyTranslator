@@ -146,7 +146,7 @@ as sensitive data.
 Requirements:
 
 - Node.js 20 or newer
-- Rust stable, with Rust 1.77.2 or newer recommended
+- Rust stable, with Rust 1.85.0 or newer recommended
 - Platform webview dependencies required by Tauri 2
 
 Install dependencies:
@@ -201,7 +201,7 @@ Release builds are created when:
 To update the release version locally:
 
 ```bash
-npm run set-release-version -- 12.1.1
+npm run set-release-version -- 13.0.0
 ```
 
 Official downloads are attached to:

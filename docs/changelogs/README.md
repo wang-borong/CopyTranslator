@@ -2,6 +2,7 @@
 
 您可以在这里看到CopyTranslator的发展历程
 
+- [CopyTranslator v13 澄明](/changelogs/v13)
 - [CopyTranslator v12 知微](/changelogs/v12)
 - [CopyTranslator v11 扶摇](/changelogs/v11)
 - [CopyTranslator v10 破晓](/changelogs/v10)

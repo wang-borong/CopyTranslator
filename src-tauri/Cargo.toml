@@ -1,6 +1,6 @@
 [package]
 name = "copytranslator"
-version = "12.1.0"
+version = "13.0.0"
 description = "CopyTranslator desktop application"
 authors = ["CopyTranslator"]
 license = "GPL-2.0-or-later"

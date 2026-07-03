@@ -41,6 +41,10 @@ import {
 import { DictionaryType, dictionaryTypes } from "./dictionary/types";
 import { version } from "./constant";
 
+// These are per-field migration cutoffs, not the current application version.
+const translatorGroupsMinConfigVersion = "v12.1.0";
+const translatorCacheMinConfigVersion = "v12.0.0";
+
 function is_empty_string(str: string): boolean {
   return !str || str.length === 0;
 }
@@ -444,7 +448,7 @@ function initConfig(
     new FlexibleGroupRule<TranslatorType>(
       ["google", "baidu", "caiyun", "stepfun", "tencentsmart"],
       translatorTypes,
-      "v12.1.0"
+      translatorGroupsMinConfigVersion
     )
   );
 
@@ -464,7 +468,7 @@ function initConfig(
         // "sogou",
       ],
       translatorTypes,
-      "v12.0.0"
+      translatorCacheMinConfigVersion
     )
   );
 
@@ -473,7 +477,7 @@ function initConfig(
     new FlexibleGroupRule<TranslatorType>(
       ["google", "baidu", "caiyun", "stepfun", "tencentsmart"],
       translatorTypes,
-      "v12.1.0"
+      translatorGroupsMinConfigVersion
     )
   );
 

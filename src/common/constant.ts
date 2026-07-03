@@ -3,8 +3,8 @@ const githubReleases = `${githubRepo}/releases`;
 
 const constants: { [key: string]: string } = {
   appName: "CopyTranslator",
-  nickName: "知微",
-  version: "12.1.0",
+  nickName: "澄明",
+  version: "13.0.0",
   stage: "stable",
   githubRepo,
   githubReleases,
@@ -43,6 +43,7 @@ if (constants.stage != "stable") {
 }
 export const version = terms.join(" ");
 export const isDebug = debug || process.env.NODE_ENV !== "production";
+const minCompatibleConfigVersion = "v12.1.0";
 
 function version2int(version: string) {
   const infos = version
@@ -63,11 +64,10 @@ export function compatible(configVersion: string): boolean {
     if (configCount > currentCount) {
       return false; //回退到旧版本要把整个配置文件重置一下，避免冲突
     }
-    const minVersion = "12.1.0";
-    const minCount = version2int(minVersion);
+    const minCount = version2int(minCompatibleConfigVersion);
 
     if (configCount < minCount) {
-      // 12.0.1 之前的版本，不支持新的配置项
+      // v12.1.0 之前的版本，不支持当前配置结构
       return false;
     }
     return true;
