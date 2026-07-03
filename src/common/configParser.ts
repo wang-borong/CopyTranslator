@@ -196,9 +196,23 @@ class ConfigParser {
       Array.from(new Set(engines || [])).filter(
         (id) => hasTranslator(String(id)) || customIdSet.has(String(id))
       );
+    const canEnableTranslator = (id: any) => {
+      const translatorId = String(id);
+      if (customIdSet.has(translatorId)) {
+        return true;
+      }
+      const key = translatorId as Identifier;
+      if (!this.rules.has(key)) {
+        return true;
+      }
+      return this.checkStatus(key, config[key]).canEnable;
+    };
     const enabled = filterExistingWithCustom(
       config["translator-enabled"] || []
-    );
+    ).filter(canEnableTranslator);
+    if (enabled.length === 0 && canEnableTranslator("google")) {
+      enabled.push("google");
+    }
     const activeSet = new Set(
       getEnabledWithCustomIds(enabled, [...customIdSet])
     );
@@ -208,6 +222,13 @@ class ConfigParser {
     config["translator-cache"] = cleanGroup(config["translator-cache"]);
     config["translator-compare"] = cleanGroup(config["translator-compare"]);
     config["translator-double"] = cleanGroup(config["translator-double"]);
+    if (!activeSet.has(config["translatorType"])) {
+      config["translatorType"] = enabled[0] || "google";
+    }
+    if (!activeSet.has(config["fallbackTranslator"])) {
+      const fallback = enabled.find((id) => this.rules.has(id as Identifier));
+      config["fallbackTranslator"] = fallback || "google";
+    }
     store.dispatch("setConfig", config);
   }
 

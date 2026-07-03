@@ -279,7 +279,8 @@ export class RendererController extends CommonController {
     }
 
     this.initApp();
-    this.applyNativeTransparency();
+    this.applyNativeWindowState();
+    setTimeout(() => this.applyNativeWindowState(), 250);
     this.reloadShortcuts();
     bus.at("initialized");
 
@@ -365,6 +366,29 @@ export class RendererController extends CommonController {
     task.catch((err) => {
       console.warn(`Failed to apply window setting ${action}:`, err);
     });
+  }
+
+  private applyStayTop(value: boolean = Boolean(this.get<boolean>("stayTop"))) {
+    const stayTop = Boolean(value);
+    const task = invoke<void>("set_window_always_on_top", { stayTop }).catch(() =>
+      getCurrentWindow().setAlwaysOnTop(stayTop)
+    );
+    this.applyWindowSetting("stayTop", task);
+  }
+
+  private applyNativeWindowState() {
+    this.applyNativeTransparency();
+    this.applyStayTop();
+    this.applyWindowSetting(
+      "skipTaskbar",
+      getCurrentWindow().setSkipTaskbar(Boolean(this.get<boolean>("skipTaskbar")))
+    );
+    this.applyWindowSetting(
+      "ignoreMouseEvents",
+      getCurrentWindow().setIgnoreCursorEvents(
+        Boolean(this.get<boolean>("ignoreMouseEvents"))
+      )
+    );
   }
 
   private applyNativeTransparency() {
@@ -753,10 +777,7 @@ export class RendererController extends CommonController {
         }
         break;
       case "stayTop":
-        this.applyWindowSetting(
-          "stayTop",
-          getCurrentWindow().setAlwaysOnTop(Boolean(value))
-        );
+        this.applyStayTop(Boolean(value));
         break;
       case "skipTaskbar":
         this.applyWindowSetting(

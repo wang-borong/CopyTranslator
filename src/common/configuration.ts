@@ -40,13 +40,14 @@ import {
 } from "./types";
 import { DictionaryType, dictionaryTypes } from "./dictionary/types";
 import { version } from "./constant";
+import { defaultTokens } from "./translate/token";
 
 // These are per-field migration cutoffs, not the current application version.
 const translatorGroupsMinConfigVersion = "v12.1.0";
 const translatorCacheMinConfigVersion = "v12.0.0";
 
 function is_empty_string(str: string): boolean {
-  return !str || str.length === 0;
+  return !str || str.trim().length === 0;
 }
 
 function getInvalidStringKeys(value: KeyConfig): string[] {
@@ -132,6 +133,85 @@ function emptyOrAllCheck(value: KeyConfig): CheckResult {
     saveReason: "要么全填写所有字段，要么全不填写",
     enableReason: "要么全填写所有字段，要么全不填写",
   };
+}
+
+function hasDefaultToken(
+  translator: TranslatorType,
+  keys: string[]
+): boolean {
+  const defaults = defaultTokens.get(translator) || {};
+  return keys.every((key) => {
+    const value = defaults[key];
+    return typeof value === "string" && !is_empty_string(value);
+  });
+}
+
+function emptyOrAllCheckWithDefault(
+  translator: TranslatorType,
+  keys: string[]
+) {
+  return (value: KeyConfig): CheckResult => {
+    const status = emptyOrAllCheck(value);
+    if (!status.canSave) {
+      return status;
+    }
+
+    const emptyKeys = getEmptyKeys(value);
+    if (emptyKeys.length === 0) {
+      return { canSave: true, canEnable: true };
+    }
+
+    if (hasDefaultToken(translator, keys)) {
+      return { canSave: true, canEnable: true };
+    }
+
+    return {
+      canSave: true,
+      canEnable: false,
+      enableReason: "请先填写密钥配置",
+    };
+  };
+}
+
+function stepfunCheck(value: KeyConfig): CheckResult {
+  const invalidKeys = getInvalidStringKeys(value);
+  if (invalidKeys.length > 0) {
+    const reason = `字段类型无效: ${invalidKeys.join(", ")}`;
+    return {
+      canSave: false,
+      canEnable: false,
+      saveReason: reason,
+      enableReason: reason,
+    };
+  }
+
+  if (is_empty_string(value.apiBase)) {
+    return {
+      canSave: false,
+      canEnable: false,
+      saveReason: "API Base 不能为空",
+      enableReason: "API Base 不能为空",
+    };
+  }
+
+  if (is_empty_string(value.model)) {
+    return {
+      canSave: false,
+      canEnable: false,
+      saveReason: "模型不能为空",
+      enableReason: "模型不能为空",
+    };
+  }
+
+  if (is_empty_string(value.apiKey) && !hasDefaultToken("stepfun", ["apiKey"])) {
+    return {
+      canSave: true,
+      canEnable: false,
+      enableReason: "请填写 API Key",
+    };
+  }
+
+  return { canSave: true, canEnable: true };
 }
 
 function generalCheck(value: KeyConfig): CheckResult {
@@ -428,7 +508,7 @@ function initConfig(
   //与翻译有关的
   config.setRule(
     "translatorType",
-    new FlexibleUnionRule<TranslatorType>("baidu", translatorTypes)
+    new FlexibleUnionRule<TranslatorType>("google", translatorTypes)
   );
   config.setRule(
     "dictionaryType",
@@ -439,14 +519,14 @@ function initConfig(
 
   config.setRule(
     "fallbackTranslator",
-    new UnionRule<TranslatorType>("baidu", translatorTypes)
+    new UnionRule<TranslatorType>("google", translatorTypes)
   );
   config.setRule("pasteDelay", new TypeRule<number>(0.0));
 
   config.setRule(
     "translator-enabled", //所有启用的引擎
     new FlexibleGroupRule<TranslatorType>(
-      ["google", "baidu", "caiyun", "stepfun", "tencentsmart"],
+      ["google", "tencentsmart"],
       translatorTypes,
       translatorGroupsMinConfigVersion
     )
@@ -475,7 +555,7 @@ function initConfig(
   config.setRule(
     "translator-compare", //多源对比时用的引擎
     new FlexibleGroupRule<TranslatorType>(
-      ["google", "baidu", "caiyun", "stepfun", "tencentsmart"],
+      ["google", "tencentsmart"],
       translatorTypes,
       translatorGroupsMinConfigVersion
     )
@@ -491,7 +571,7 @@ function initConfig(
     "baidu",
     new StructRule<KeyConfig>(
       { appid: "", key: "" },
-      emptyOrAllCheck,
+      emptyOrAllCheckWithDefault("baidu", ["appid", "key"]),
       undefined,
       "baiduConfigNote",
       "https://fanyi-api.baidu.com/doc/21"
@@ -532,7 +612,7 @@ function initConfig(
     "caiyun",
     new StructRule<KeyConfig>(
       { token: "" },
-      emptyOrAllCheck,
+      emptyOrAllCheckWithDefault("caiyun", ["token"]),
       undefined,
       "caiyunConfigNote",
       "https://docs.caiyunapp.com/lingocloud-api/"
@@ -592,12 +672,18 @@ function initConfig(
     "stepfun",
     new StructRule<KeyConfig>(
       {
+        apiBase: "https://api.stepfun.com/v1",
+        apiKey: "",
+        model: "step-3.5-flash",
         prompt: "default",
         temperature: "0.3",
         maxTokens: "4000",
       },
-      undefined,
+      stepfunCheck,
       {
+        apiBase: { uiType: "text" },
+        apiKey: { uiType: "text" },
+        model: { uiType: "text" },
         prompt: { uiType: "text" },
         temperature: { uiType: "select", options: temperatureOptions },
         maxTokens: { uiType: "select", options: maxTokensOptions },

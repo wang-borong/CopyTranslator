@@ -225,7 +225,7 @@ const cacheTranslators = computed(() => {
 });
 
 const fallbackTranslator = computed({
-  get: () => base.config.value["fallbackTranslator"] || "baidu",
+  get: () => base.config.value["fallbackTranslator"] || "google",
   set: (val: string) => {
     base.callback("fallbackTranslator", val);
   }

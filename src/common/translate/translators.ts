@@ -16,7 +16,7 @@ import { Aliyun } from "@opentranslate2/aliyun";
 import { Azure } from "@opentranslate2/azure";
 import { Deepl } from "@opentranslate2/deepl";
 import { Tencent } from "@opentranslate2/tencent";
-import { TencentSmart } from "@opentranslate2/tencent-smart";
+import { TencentSmartWrapper } from "./tencent-smart-wrapper";
 import { Yandex } from "@opentranslate2/yandex";
 import { VolcTranslator } from "@opentranslate2/volc";
 import { BaiduDomain } from "@opentranslate2/baidu-domain";
@@ -26,6 +26,20 @@ import { Niu } from "@opentranslate2/niu";
 export { detectLang };
 
 export const translators = new Map<TranslatorType, Translator>();
+
+const mergeTranslatorConfig = (
+  defaults: Record<string, any> | undefined,
+  userConfig: Record<string, any> | undefined
+) => {
+  const merged = { ...(defaults || {}) };
+  for (const [key, value] of Object.entries(userConfig || {})) {
+    if (typeof value === "string" && value.trim().length === 0) {
+      continue;
+    }
+    merged[key] = value;
+  }
+  return merged;
+};
 
 const creators = new Map<TranslatorType, (config: any) => Translator>([
   [
@@ -91,7 +105,7 @@ const creators = new Map<TranslatorType, (config: any) => Translator>([
   [
     "tencentsmart",
     (c) => {
-      return new TencentSmart({ axios, config: c });
+      return new TencentSmartWrapper({ axios, config: c });
     },
   ],
   [
@@ -145,10 +159,14 @@ export function getTranslator(transType: TranslatorType | string): Translator {
   if (creators.has(transType as TranslatorType)) {
     const creator = creators.get(transType as TranslatorType)!;
     // 尝试获取配置，优先使用 store 中的配置
-    let cfg = defaultTokens.get(transType as TranslatorType);
+    const defaultConfig = defaultTokens.get(transType as TranslatorType);
+    let cfg = defaultConfig;
     try {
       if (config.has(transType as any)) {
-        cfg = config.get(transType as any);
+        cfg = mergeTranslatorConfig(
+          defaultConfig,
+          config.get(transType as any)
+        );
       }
     } catch (e) {
       // config 可能未初始化或在渲染进程中不可用（虽然不太可能，因为 config 做了代理）

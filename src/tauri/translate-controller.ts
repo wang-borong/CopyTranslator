@@ -324,22 +324,25 @@ export class TranslateController {
     return false;
   }
 
-  checkClipboard(
+  async checkClipboard(
     checkFocus: boolean = false,
-    engines?: (TranslatorType | string)[]
-  ): void {
+    engines?: (TranslatorType | string)[],
+    clipboardText?: string
+  ): Promise<void> {
     if (checkFocus) {
-      isValidWindow("listenClipboard").then((valid) => {
-        if (valid) {
-          logger.debug("valid window, checking clipboard");
-          this.checkClipboard(false, engines);
-        } else {
-          logger.debug("invalid window, not check clipboard");
-        }
-      });
+      const valid = await isValidWindow("listenClipboard");
+      if (valid) {
+        logger.debug("valid window, checking clipboard");
+        await this.checkClipboard(false, engines, clipboardText);
+      } else {
+        logger.debug("invalid window, not check clipboard");
+      }
       return;
     }
-    const originalText = clipboard.readText();
+    const originalText =
+      typeof clipboardText === "string"
+        ? clipboardText
+        : await clipboard.readTextFresh();
     logger.debug(
       `checkClipboard: text length ${originalText ? originalText.length : 0}`
     );
@@ -735,19 +738,25 @@ export class TranslateController {
       this.setCurrentStatus();
 
       if (!this.clipboardWatchBound) {
-        clipboard.on("text-changed", () => {
-          this.checkClipboard(true);
+        clipboard.on("text-changed", (text) => {
+          this.checkClipboard(true, undefined, text);
         });
-        clipboard.on("image-changed", () => {
-          // OCR 相关
+        clipboard.on("image-changed", (image) => {
           if (!this.get<boolean>("enableOCR")) {
+            logger.debug("Clipboard image detected, OCR disabled");
             return;
           }
-          if (recognizer.enabled()) {
-            logger.toastKey("clipboardImageDetected", "检测到剪贴板图片");
-            recognizer.recognize(clipboard.readImage().toDataURL());
+          if (!recognizer.enabled()) {
+            logger.debug("Clipboard image detected, OCR is not configured");
             return;
           }
+          const dataUrl = image || clipboard.readImage().toDataURL();
+          if (!dataUrl) {
+            logger.debug("Clipboard image detected, but image data is empty");
+            return;
+          }
+          logger.toastKey("clipboardImageDetected", "检测到剪贴板图片");
+          recognizer.recognize(dataUrl);
         });
         this.clipboardWatchBound = true;
       }

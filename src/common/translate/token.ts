@@ -5,8 +5,8 @@ export const defaultTokens = new Map<TranslatorType, any>([
   [
     "baidu",
     {
-      appid: process.env.VUE_APP_BAIDU_APP_ID as string,
-      key: process.env.VUE_APP_BAIDU_APP_KEY as string,
+      appid: process.env.VUE_APP_BAIDU_APP_ID || "",
+      key: process.env.VUE_APP_BAIDU_APP_KEY || "",
     },
   ],
   [
@@ -27,7 +27,7 @@ export const defaultTokens = new Map<TranslatorType, any>([
   [
     "caiyun",
     {
-      token: process.env.VUE_APP_CAIYUN_TOKEN as string,
+      token: process.env.VUE_APP_CAIYUN_TOKEN || "",
     },
   ],
   // [
@@ -54,10 +54,9 @@ export const defaultTokens = new Map<TranslatorType, any>([
   [
     "stepfun",
     {
-      apiBase:
-        process.env.VUE_APP_STEPFUN_API_BASE || "https://openrouter.ai/api/v1",
+      apiBase: process.env.VUE_APP_STEPFUN_API_BASE || "https://api.stepfun.com/v1",
       apiKey: process.env.VUE_APP_STEPFUN_API_KEY || "",
-      model: process.env.VUE_APP_STEPFUN_MODEL || "stepfun/step-3.5-flash:free",
+      model: process.env.VUE_APP_STEPFUN_MODEL || "step-3.5-flash",
       prompt: "default",
       temperature: "0.3",
       maxTokens: "4000",

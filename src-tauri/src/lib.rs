@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 const MIN_LINUX_WINDOW_OPACITY: f64 = 0.25;
+const CLIPBOARD_POLL_INTERVAL_MS: u64 = 250;
 
 static LISTEN_CLIPBOARD: AtomicBool = AtomicBool::new(true);
 
@@ -135,6 +136,108 @@ fn set_window_opacity(window: tauri::Window, opacity: f64) -> Result<(), String>
     }
 
     Ok(())
+}
+
+#[tauri::command]
+fn set_window_always_on_top(window: tauri::Window, stay_top: bool) -> Result<(), String> {
+    let tauri_result = window.set_always_on_top(stay_top);
+
+    #[cfg(target_os = "linux")]
+    {
+        use gtk::prelude::GtkWindowExt;
+
+        if let Ok(gtk_window) = window.gtk_window() {
+            gtk_window.set_keep_above(stay_top);
+        }
+
+        apply_kde_keep_above_fallback(stay_top);
+
+        if tauri_result.is_err() {
+            return Ok(());
+        }
+    }
+
+    tauri_result.map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "linux")]
+fn apply_kde_keep_above_fallback(stay_top: bool) {
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    if !desktop.to_ascii_lowercase().contains("kde") {
+        return;
+    }
+
+    let pid = std::process::id();
+    let script = format!(
+        r#"
+const targetPid = {pid};
+const stayTop = {stay_top};
+
+function allWindows() {{
+  if (typeof workspace.windowList === "function") {{
+    return workspace.windowList();
+  }}
+  if (typeof workspace.clientList === "function") {{
+    return workspace.clientList();
+  }}
+  return [];
+}}
+
+for (const window of allWindows()) {{
+  const caption = String(window.caption || "");
+  const resourceClass = String(window.resourceClass || "").toLowerCase();
+  const resourceName = String(window.resourceName || "").toLowerCase();
+  if (
+    window.pid === targetPid ||
+    caption.indexOf("CopyTranslator") !== -1 ||
+    resourceClass.indexOf("copytranslator") !== -1 ||
+    resourceName.indexOf("copytranslator") !== -1
+  ) {{
+    window.keepAbove = stayTop;
+  }}
+}}
+"#,
+        pid = pid,
+        stay_top = if stay_top { "true" } else { "false" }
+    );
+
+    let script_path = std::env::temp_dir().join(format!("copytranslator-keep-above-{}.js", pid));
+    if std::fs::write(&script_path, script).is_err() {
+        return;
+    }
+
+    for program in ["qdbus6", "qdbus"] {
+        let Ok(output) = std::process::Command::new(program)
+            .arg("org.kde.KWin")
+            .arg("/Scripting")
+            .arg("org.kde.kwin.Scripting.loadScript")
+            .arg(&script_path)
+            .output()
+        else {
+            continue;
+        };
+        if !output.status.success() {
+            continue;
+        }
+        let script_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if script_id.is_empty() {
+            continue;
+        }
+        let candidate_paths = [
+            format!("/Scripting/Script{}", script_id),
+            format!("/{}", script_id),
+        ];
+        for script_object in candidate_paths {
+            let _ = std::process::Command::new(program)
+                .arg("org.kde.KWin")
+                .arg(script_object)
+                .arg("org.kde.kwin.Script.run")
+                .output();
+        }
+        break;
+    }
+
+    let _ = std::fs::remove_file(script_path);
 }
 
 #[derive(Deserialize)]
@@ -503,6 +606,88 @@ fn read_clipboard_image() -> Result<Option<String>, String> {
     }
 }
 
+#[tauri::command]
+fn read_clipboard_text() -> Result<Option<String>, String> {
+    Ok(read_clipboard_text_inner())
+}
+
+fn read_clipboard_text_inner() -> Option<String> {
+    if let Ok(mut clipboard) = Clipboard::new() {
+        match clipboard.get_text() {
+            Ok(text) if !text.is_empty() => return Some(text),
+            Ok(_) | Err(_) => {}
+        }
+    }
+
+    read_clipboard_text_fallback()
+}
+
+#[cfg(target_os = "linux")]
+fn read_clipboard_text_fallback() -> Option<String> {
+    for (program, args) in [
+        ("wl-paste", vec!["--no-newline"]),
+        ("xclip", vec!["-selection", "clipboard", "-o"]),
+        ("xsel", vec!["--clipboard", "--output"]),
+        (
+            "qdbus6",
+            vec![
+                "org.kde.klipper",
+                "/klipper",
+                "org.kde.klipper.klipper.getClipboardContents",
+            ],
+        ),
+        (
+            "qdbus",
+            vec![
+                "org.kde.klipper",
+                "/klipper",
+                "org.kde.klipper.klipper.getClipboardContents",
+            ],
+        ),
+    ] {
+        if let Some(text) = command_text_output(program, &args) {
+            return Some(text);
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn read_clipboard_text_fallback() -> Option<String> {
+    command_text_output("pbpaste", &[])
+}
+
+#[cfg(target_os = "windows")]
+fn read_clipboard_text_fallback() -> Option<String> {
+    command_text_output(
+        "powershell",
+        &["-NoProfile", "-Command", "Get-Clipboard -Raw"],
+    )
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn read_clipboard_text_fallback() -> Option<String> {
+    None
+}
+
+fn command_text_output(program: &str, args: &[&str]) -> Option<String> {
+    let output = std::process::Command::new(program)
+        .args(args)
+        .output()
+        .ok()?;
+    if !output.status.success() || output.stdout.is_empty() {
+        return None;
+    }
+    let text = String::from_utf8(output.stdout).ok()?;
+    let text = text.trim_end_matches(['\r', '\n']).to_string();
+    if text.is_empty() {
+        None
+    } else {
+        Some(text)
+    }
+}
+
 fn command_output(program: &str, args: &[&str]) -> Result<Option<String>, String> {
     let output = match std::process::Command::new(program).args(args).output() {
         Ok(output) => output,
@@ -558,37 +743,33 @@ fn get_active_window_name() -> Result<Option<String>, String> {
 
 fn start_clipboard_monitor(app_handle: AppHandle) {
     std::thread::spawn(move || {
-        let mut ctx = match Clipboard::new() {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Failed to initialize clipboard: {:?}", e);
-                return;
-            }
-        };
-
         let mut last_text = String::new();
         let mut last_image_hash = 0;
 
         loop {
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(CLIPBOARD_POLL_INTERVAL_MS));
 
             if !LISTEN_CLIPBOARD.load(Ordering::Acquire) {
                 continue;
             }
 
-            if let Ok(text) = ctx.get_text() {
-                if !text.is_empty() && text != last_text {
+            if let Some(text) = read_clipboard_text_inner() {
+                if text != last_text {
                     last_text = text.clone();
                     let _ = app_handle.emit("clipboard-changed", text);
                 }
+            } else {
+                last_text.clear();
             }
 
-            if let Ok(image) = ctx.get_image() {
-                let image_hash = hash_clipboard_image(&image);
-                if image_hash != last_image_hash {
-                    last_image_hash = image_hash;
-                    if let Ok(data_url) = image_data_to_png_data_url(image) {
-                        let _ = app_handle.emit("clipboard-image-changed", data_url);
+            if let Ok(mut clipboard) = Clipboard::new() {
+                if let Ok(image) = clipboard.get_image() {
+                    let image_hash = hash_clipboard_image(&image);
+                    if image_hash != last_image_hash {
+                        last_image_hash = image_hash;
+                        if let Ok(data_url) = image_data_to_png_data_url(image) {
+                            let _ = app_handle.emit("clipboard-image-changed", data_url);
+                        }
                     }
                 }
             }
@@ -667,6 +848,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_listen_clipboard,
             set_window_opacity,
+            set_window_always_on_top,
             configure_global_shortcuts,
             fetch_http_proxy,
             simulate_copy,
@@ -676,6 +858,7 @@ pub fn run() {
             open_config_file,
             open_config_folder,
             open_url,
+            read_clipboard_text,
             read_clipboard_image,
             baidu_ocr,
             get_active_window_name
