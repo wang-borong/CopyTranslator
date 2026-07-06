@@ -4,7 +4,7 @@ const githubReleases = `${githubRepo}/releases`;
 const constants: { [key: string]: string } = {
   appName: "CopyTranslator",
   nickName: "澄明",
-  version: "13.0.3",
+  version: "13.0.2",
   stage: "stable",
   githubRepo,
   githubReleases,
