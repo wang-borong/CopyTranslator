@@ -203,7 +203,7 @@ Release builds are created when:
 To update the release version locally:
 
 ```bash
-npm run set-release-version -- 13.0.2
+npm run set-release-version -- 13.0.3
 ```
 
 Official downloads are attached to:
