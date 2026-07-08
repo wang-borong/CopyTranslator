@@ -106,10 +106,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { Identifier, translatorTypes } from "../common/types";
-import { invoke } from "@tauri-apps/api/core";
 import { FieldMetadata } from "../common/rule";
 import config from "../common/configuration";
 import { useBase } from "./useBase";
+import { openUrl } from "@/tauri/open-url";
 
 const props = defineProps<{
   identifier: Identifier;
@@ -147,9 +147,7 @@ const docUrl = computed(() => {
 
 const openDocUrl = () => {
   if (docUrl.value) {
-    invoke("open_url", { url: docUrl.value }).catch((err) => {
-      console.error("Failed to open URL:", err);
-    });
+    openUrl(docUrl.value);
   }
 };
 

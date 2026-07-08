@@ -4,14 +4,14 @@ const githubReleases = `${githubRepo}/releases`;
 const constants: { [key: string]: string } = {
   appName: "CopyTranslator",
   nickName: "澄明",
-  version: "13.0.4",
+  version: "13.0.5",
   stage: "stable",
   githubRepo,
   githubReleases,
   githubLatestReleaseApi:
     "https://api.github.com/repos/wang-borong/CopyTranslator/releases/latest",
-  changelogs: githubReleases,
-  wiki: "https://copytranslator.github.io/guide",
+  changelogs: `${githubRepo}/blob/master/docs/changelogs/v13.md`,
+  wiki: `${githubRepo}/blob/master/docs/guide/13.0.0.md`,
   homepage: githubRepo,
   downloadPage: githubReleases,
   allChangelogs: githubReleases,

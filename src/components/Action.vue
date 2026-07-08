@@ -16,34 +16,29 @@
               hide-details
             ></v-switch>
           </div>
-          <v-dialog
-            v-else-if="action.id === 'newConfigSnapshot'"
-            v-model="dialog"
-          >
-            <template v-slot:activator="{ props: dialogProps }">
-              <SimpleButton v-bind="dialogProps" class="actionButton">
-                {{ trans[identifier] }}
-              </SimpleButton>
-            </template>
-            <v-card>
-              <v-text-field
-                class="mytext"
-                v-model="text"
-                :rules="rules"
-                :label="trans['snapshotPrompt']"
-              ></v-text-field>
-              <SimpleButton
-                @click="
-                  callback(identifier, text);
-                  dialog = false;
-                  text = '';
-                "
-                :disabled="invalidSnapshotName"
-                class="actionButton"
-                >{{ trans[identifier] }}
-              </SimpleButton>
-            </v-card>
-          </v-dialog>
+          <div v-else-if="action.id === 'newConfigSnapshot'">
+            <SimpleButton @click.stop="openSnapshotDialog" class="actionButton">
+              {{ trans[identifier] }}
+            </SimpleButton>
+            <v-dialog v-model="dialog" max-width="420">
+              <v-card class="snapshot-dialog">
+                <v-text-field
+                  class="mytext"
+                  v-model="text"
+                  :rules="rules"
+                  :label="trans['snapshotPrompt']"
+                  autofocus
+                  @keydown.enter="saveSnapshot"
+                ></v-text-field>
+                <SimpleButton
+                  @click="saveSnapshot"
+                  :disabled="invalidSnapshotName"
+                  class="actionButton"
+                  >{{ trans[identifier] }}
+                </SimpleButton>
+              </v-card>
+            </v-dialog>
+          </div>
           <v-menu v-else-if="action.actionType === 'param_normal'">
             <template v-slot:activator="{ props: menuProps }">
               <SimpleButton v-bind="menuProps" class="actionButton">
@@ -159,7 +154,31 @@ const dialog = ref(false);
 const text = ref("");
 const rules = snapshotNameRules;
 
-const invalidSnapshotName = computed(() => !isValidSnapshotName(text.value));
+const snapshotName = computed(() => text.value.trim());
+const invalidSnapshotName = computed(() => !isValidSnapshotName(snapshotName.value));
+
+const createSnapshotName = () => {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "")
+    .replace(/[T:]/g, "-");
+  return `snapshot-${timestamp}`;
+};
+
+const openSnapshotDialog = () => {
+  text.value = createSnapshotName();
+  dialog.value = true;
+};
+
+const saveSnapshot = () => {
+  const name = snapshotName.value;
+  if (!isValidSnapshotName(name)) {
+    return;
+  }
+  callback(props.identifier, name);
+  dialog.value = false;
+  text.value = "";
+};
 
 const tooltip = computed(() => {
   if (!action.value || action.value.actionType === "prompt") return undefined;
@@ -284,7 +303,8 @@ const actionLayoutClass = computed(() => {
 .action-switch {
   margin: 0;
 }
-.actionButton :deep(.defaultBtn) {
+.actionButton :deep(.defaultBtn),
+:deep(.actionButton.defaultBtn) {
   width: 100%;
   min-width: 0;
 }

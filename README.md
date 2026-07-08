@@ -193,7 +193,7 @@ Linux notes:
 
 The GitHub Actions workflow builds and checks Windows, macOS and Linux. The
 Linux release job also uploads an Arch Linux package named like
-`CopyTranslator_13.0.4_x86_64.tar.zst`.
+`CopyTranslator_13.0.5_x86_64.tar.zst`.
 
 Release builds are created when:
 
@@ -203,7 +203,7 @@ Release builds are created when:
 To update the release version locally:
 
 ```bash
-npm run set-release-version -- 13.0.4
+npm run set-release-version -- 13.0.5
 ```
 
 Official downloads are attached to:

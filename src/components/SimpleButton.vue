@@ -8,6 +8,9 @@
 
 <script setup lang="ts">
 // Simple wrapping button for Vuetify 3 compatibility
+defineOptions({
+  inheritAttrs: false,
+});
 </script>
 
 <style scoped>

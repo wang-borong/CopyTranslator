@@ -111,12 +111,7 @@ import { ref, computed, onMounted } from "vue";
 import { useBase } from "./useBase";
 import Action from "./Action.vue";
 import { ActionButton } from "../common/types";
-import { invoke } from "@tauri-apps/api/core";
-const openUrl = (url: string) => {
-  invoke("open_url", { url }).catch(err => {
-    console.error("Failed to open URL:", err);
-  });
-};
+import { openUrl } from "@/tauri/open-url";
 
 interface Option {
   value: string;

@@ -354,7 +354,8 @@ async fn fetch_http_proxy(req: ProxyRequest) -> Result<ProxyResponse, String> {
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| e.to_string())?;
-    let mut builder = match req.method.to_uppercase().as_str() {
+    let method = req.method.to_uppercase();
+    let mut builder = match method.as_str() {
         "HEAD" => client.head(&req.url),
         "POST" => client.post(&req.url),
         "PUT" => client.put(&req.url),
@@ -373,7 +374,11 @@ async fn fetch_http_proxy(req: ProxyRequest) -> Result<ProxyResponse, String> {
     let res = builder.send().await.map_err(|e| e.to_string())?;
     let status = res.status().as_u16();
     let final_url = res.url().to_string();
-    let body = res.text().await.map_err(|e| e.to_string())?;
+    let body = if method == "HEAD" {
+        String::new()
+    } else {
+        res.text().await.map_err(|e| e.to_string())?
+    };
 
     Ok(ProxyResponse {
         status,

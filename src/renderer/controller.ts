@@ -15,11 +15,7 @@ import { getCurrentWindow, type Color } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-const openUrl = (url: string) => {
-  invoke("open_url", { url }).catch(err => {
-    console.error("Failed to open URL:", err);
-  });
-};
+import { openUrl } from "@/tauri/open-url";
 import { TranslateController } from "@/tauri/translate-controller";
 import config from "../common/configuration";
 import logger, { initLog } from "../common/logger";
@@ -249,6 +245,7 @@ export class RendererController extends CommonController {
   private globalShortcutUnlisten: UnlistenFn | null = null;
   private localShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
   private webviewZoom = 1;
+  private isCheckingUpdate = false;
 
   set(identifier: Identifier, value: any): boolean {
     return this.config.set(identifier, value);
@@ -632,6 +629,26 @@ export class RendererController extends CommonController {
   }
 
   private async fetchGithubApiRelease(): Promise<GithubRelease> {
+    if (isTauriRuntime()) {
+      const response = (await invoke("fetch_http_proxy", {
+        req: {
+          url: constants.githubLatestReleaseApi,
+          method: "GET",
+          headers: {
+            Accept: "application/vnd.github+json",
+            "User-Agent": `CopyTranslator/${constants.version}`,
+          },
+          body: null,
+        },
+      })) as ProxyHttpResponse;
+
+      if (response.status < 200 || response.status >= 400) {
+        throw new Error(`GitHub release API returned ${response.status}`);
+      }
+
+      return JSON.parse(response.body) as GithubRelease;
+    }
+
     const response = await fetch(constants.githubLatestReleaseApi, {
       headers: {
         Accept: "application/vnd.github+json",
@@ -651,7 +668,7 @@ export class RendererController extends CommonController {
     const response = (await invoke("fetch_http_proxy", {
       req: {
         url: constants.latest,
-        method: "HEAD",
+        method: "GET",
         headers: {
           Accept: "text/html",
           "User-Agent": `CopyTranslator/${constants.version}`,
@@ -690,27 +707,25 @@ export class RendererController extends CommonController {
   }
 
   private async checkUpdate(auto = false) {
+    if (this.isCheckingUpdate) {
+      if (!auto) {
+        this.toast(this.text("updateChecking", "正在检查更新"), true);
+      }
+      return;
+    }
+
+    this.isCheckingUpdate = true;
     if (!auto) {
       this.toast(this.text("updateChecking", "正在检查更新"), true);
     }
+
+    let release: GithubRelease;
+    let latestTag: string;
     try {
-      const release = await this.fetchLatestRelease();
-      const latestTag = this.normalizeReleaseTag(release.tag_name || "");
+      release = await this.fetchLatestRelease();
+      latestTag = this.normalizeReleaseTag(release.tag_name || "");
       if (!latestTag) {
         throw new Error("GitHub release tag is empty");
-      }
-      const currentTag = `v${constants.version}`;
-      if (isLower(currentTag, latestTag)) {
-        const releaseName = release.name || latestTag;
-        this.toast(
-          `${this.text("updateAvailable", "发现新版本")}: ${releaseName}`,
-          true
-        );
-        if (!auto) {
-          openUrl(release.html_url || constants.githubReleases);
-        }
-      } else if (!auto) {
-        this.toast(this.text("updateCurrent", "当前已是最新版本"), true);
       }
     } catch (err) {
       console.error("Failed to check GitHub releases:", err);
@@ -718,9 +733,24 @@ export class RendererController extends CommonController {
         return;
       }
       this.toast(this.text("updateCheckFailed", "检查更新失败"), true);
+      openUrl(constants.githubReleases);
+      return;
+    } finally {
+      this.isCheckingUpdate = false;
+    }
+
+    const currentTag = `v${constants.version}`;
+    if (isLower(currentTag, latestTag)) {
+      const releaseName = release.name || latestTag;
+      this.toast(
+        `${this.text("updateAvailable", "发现新版本")}: ${releaseName}`,
+        true
+      );
       if (!auto) {
-        openUrl(constants.githubReleases);
+        openUrl(release.html_url || constants.githubReleases);
       }
+    } else if (!auto) {
+      this.toast(this.text("updateCurrent", "当前已是最新版本"), true);
     }
   }
 

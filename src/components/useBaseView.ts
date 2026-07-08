@@ -1,10 +1,5 @@
 import { computed, onMounted } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-const openUrl = (url: string) => {
-  invoke("open_url", { url }).catch(err => {
-    console.error("Failed to open URL:", err);
-  });
-};
+import { openUrl } from "@/tauri/open-url";
 import { useBase } from "./useBase";
 import eventBus from "@/common/event-bus";
 import logger from "@/common/logger";

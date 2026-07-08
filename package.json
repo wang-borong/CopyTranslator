@@ -1,6 +1,6 @@
 {
   "name": "copytranslator",
-  "version": "13.0.4",
+  "version": "13.0.5",
   "private": true,
   "scripts": {
     "dev": "vite",
