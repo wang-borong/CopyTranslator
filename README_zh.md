@@ -159,7 +159,7 @@ Linux 说明：
 ## 发布
 
 GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。Linux
-发布任务会额外上传 Arch Linux 安装包 `copytranslator.tar.zst`。
+发布任务会额外上传 Arch Linux 安装包，例如 `CopyTranslator_13.0.4_x86_64.tar.zst`。
 
 以下情况会触发 Release 构建：
 
@@ -169,16 +169,20 @@ GitHub Actions 已配置 Windows、macOS 和 Linux 的检查与发布构建。Li
 本地更新发布版本号：
 
 ```bash
-npm run set-release-version -- 13.0.3
+npm run set-release-version -- 13.0.4
 ```
 
 正式下载地址：
 
 https://github.com/wang-borong/CopyTranslator/releases
 
-应用内更新检查读取：
+应用内更新检查会优先读取 GitHub Releases API：
 
 https://api.github.com/repos/wang-borong/CopyTranslator/releases/latest
+
+如果该 API 不可用或被限流，会降级读取：
+
+https://github.com/wang-borong/CopyTranslator/releases/latest
 
 ## 隐私说明
 

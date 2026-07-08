@@ -172,7 +172,7 @@ jobs:
             Downloads for Windows, macOS, Linux and Arch Linux are attached below.
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft }}
           prerelease: ${{ contains(steps.release-version.outputs.tag, 'alpha') || contains(steps.release-version.outputs.tag, 'beta') || contains(steps.release-version.outputs.tag, 'rc') || (github.event_name == 'workflow_dispatch' && inputs.prerelease) }}
-          files: dist/release/copytranslator.tar.zst
+          files: dist/release/CopyTranslator_${{ steps.release-version.outputs.version }}_*.tar.zst
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

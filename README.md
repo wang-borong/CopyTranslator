@@ -192,8 +192,8 @@ Linux notes:
 ## Release
 
 The GitHub Actions workflow builds and checks Windows, macOS and Linux. The
-Linux release job also uploads an Arch Linux package named
-`copytranslator.tar.zst`.
+Linux release job also uploads an Arch Linux package named like
+`CopyTranslator_13.0.4_x86_64.tar.zst`.
 
 Release builds are created when:
 
@@ -203,16 +203,20 @@ Release builds are created when:
 To update the release version locally:
 
 ```bash
-npm run set-release-version -- 13.0.3
+npm run set-release-version -- 13.0.4
 ```
 
 Official downloads are attached to:
 
 https://github.com/wang-borong/CopyTranslator/releases
 
-The in-app update check reads the latest release from:
+The in-app update check tries the GitHub Releases API first:
 
 https://api.github.com/repos/wang-borong/CopyTranslator/releases/latest
+
+If that API is unavailable or rate-limited, it falls back to:
+
+https://github.com/wang-borong/CopyTranslator/releases/latest
 
 ## Privacy Notes
 

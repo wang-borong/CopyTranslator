@@ -25,11 +25,11 @@ const rootDir = resolve(scriptDir, "..");
 const packageDir = join(rootDir, "dist", "archlinux");
 const stageDir = join(packageDir, "pkg");
 const outputDir = join(rootDir, "dist", "release");
-const outputFile = join(outputDir, "copytranslator.tar.zst");
 const packageName = "copytranslator";
 const packageRelease = "1";
 const archPackageVersion = version.replaceAll("-", "_");
 const arch = process.env.ARCH_PACKAGE_ARCH || getMachineArch();
+const outputFile = join(outputDir, `CopyTranslator_${version}_${arch}.tar.zst`);
 
 function getMachineArch() {
   const machine = execFileSync("uname", ["-m"], { encoding: "utf8" }).trim();

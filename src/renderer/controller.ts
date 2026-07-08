@@ -73,6 +73,16 @@ type GithubRelease = {
   html_url?: string;
 };
 
+type ProxyHttpResponse = {
+  status: number;
+  body: string;
+  final_url?: string;
+  finalUrl?: string;
+};
+
+const isTauriRuntime = () =>
+  typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__);
+
 const MIN_NATIVE_WINDOW_OPACITY = 0.25;
 
 const clampNumber = (value: number, min: number, max: number) => {
@@ -595,7 +605,88 @@ export class RendererController extends CommonController {
 
   private normalizeReleaseTag(tag: string) {
     const trimmed = tag.trim();
+    if (!trimmed) {
+      return "";
+    }
     return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
+  }
+
+  private getProxyFinalUrl(response: ProxyHttpResponse) {
+    return response.final_url || response.finalUrl || "";
+  }
+
+  private extractReleaseTagFromUrl(url: string) {
+    const match = /\/releases\/tag\/([^/?#]+)/.exec(url);
+    if (!match) {
+      return "";
+    }
+    return this.normalizeReleaseTag(decodeURIComponent(match[1]));
+  }
+
+  private extractReleaseTagFromHtml(html: string) {
+    const match = /\/releases\/tag\/([^"'<>?\s]+)/.exec(html);
+    if (!match) {
+      return "";
+    }
+    return this.normalizeReleaseTag(decodeURIComponent(match[1]));
+  }
+
+  private async fetchGithubApiRelease(): Promise<GithubRelease> {
+    const response = await fetch(constants.githubLatestReleaseApi, {
+      headers: {
+        Accept: "application/vnd.github+json",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`GitHub release API returned ${response.status}`);
+    }
+    return (await response.json()) as GithubRelease;
+  }
+
+  private async fetchGithubLatestRedirectRelease(): Promise<GithubRelease> {
+    if (!isTauriRuntime()) {
+      throw new Error("GitHub latest release fallback requires Tauri runtime");
+    }
+
+    const response = (await invoke("fetch_http_proxy", {
+      req: {
+        url: constants.latest,
+        method: "HEAD",
+        headers: {
+          Accept: "text/html",
+          "User-Agent": `CopyTranslator/${constants.version}`,
+        },
+        body: null,
+      },
+    })) as ProxyHttpResponse;
+
+    if (response.status < 200 || response.status >= 400) {
+      throw new Error(`GitHub latest release page returned ${response.status}`);
+    }
+
+    const finalUrl = this.getProxyFinalUrl(response);
+    const latestTag =
+      this.extractReleaseTagFromUrl(finalUrl) ||
+      this.extractReleaseTagFromHtml(response.body);
+    if (!latestTag) {
+      throw new Error("GitHub latest release tag is missing");
+    }
+
+    return {
+      tag_name: latestTag,
+      name: latestTag,
+      html_url: finalUrl || `${constants.githubReleases}/tag/${latestTag}`,
+    };
+  }
+
+  private async fetchLatestRelease(): Promise<GithubRelease> {
+    try {
+      return await this.fetchGithubApiRelease();
+    } catch (apiError) {
+      console.warn("GitHub release API failed, trying latest page fallback:", apiError);
+    }
+
+    return this.fetchGithubLatestRedirectRelease();
   }
 
   private async checkUpdate(auto = false) {
@@ -603,17 +694,9 @@ export class RendererController extends CommonController {
       this.toast(this.text("updateChecking", "正在检查更新"), true);
     }
     try {
-      const response = await fetch(constants.githubLatestReleaseApi, {
-        headers: {
-          Accept: "application/vnd.github+json",
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`GitHub release API returned ${response.status}`);
-      }
-      const release = (await response.json()) as GithubRelease;
+      const release = await this.fetchLatestRelease();
       const latestTag = this.normalizeReleaseTag(release.tag_name || "");
-      if (!latestTag || latestTag === "v") {
+      if (!latestTag) {
         throw new Error("GitHub release tag is empty");
       }
       const currentTag = `v${constants.version}`;
@@ -631,6 +714,9 @@ export class RendererController extends CommonController {
       }
     } catch (err) {
       console.error("Failed to check GitHub releases:", err);
+      if (auto) {
+        return;
+      }
       this.toast(this.text("updateCheckFailed", "检查更新失败"), true);
       if (!auto) {
         openUrl(constants.githubReleases);

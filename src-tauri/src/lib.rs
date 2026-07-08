@@ -317,6 +317,7 @@ struct ProxyRequest {
 struct ProxyResponse {
     status: u16,
     body: String,
+    final_url: String,
 }
 
 #[derive(Deserialize)]
@@ -354,6 +355,7 @@ async fn fetch_http_proxy(req: ProxyRequest) -> Result<ProxyResponse, String> {
         .build()
         .map_err(|e| e.to_string())?;
     let mut builder = match req.method.to_uppercase().as_str() {
+        "HEAD" => client.head(&req.url),
         "POST" => client.post(&req.url),
         "PUT" => client.put(&req.url),
         "DELETE" => client.delete(&req.url),
@@ -370,9 +372,14 @@ async fn fetch_http_proxy(req: ProxyRequest) -> Result<ProxyResponse, String> {
 
     let res = builder.send().await.map_err(|e| e.to_string())?;
     let status = res.status().as_u16();
+    let final_url = res.url().to_string();
     let body = res.text().await.map_err(|e| e.to_string())?;
 
-    Ok(ProxyResponse { status, body })
+    Ok(ProxyResponse {
+        status,
+        body,
+        final_url,
+    })
 }
 
 fn validate_http_url(raw_url: &str) -> Result<&str, String> {
