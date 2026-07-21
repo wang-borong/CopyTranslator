@@ -873,7 +873,6 @@ export class RendererController extends CommonController {
       case "primaryColor":
       case "colorMode":
         applyThemeFromConfig();
-        this.applyNativeTransparency();
         break;
       case "backgroundColor":
       case "transparency":

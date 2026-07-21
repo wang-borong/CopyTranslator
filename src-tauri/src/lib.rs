@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::Cursor;
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
@@ -17,6 +18,24 @@ const MIN_LINUX_WINDOW_OPACITY: f64 = 0.25;
 const CLIPBOARD_POLL_INTERVAL_MS: u64 = 250;
 
 static LISTEN_CLIPBOARD: AtomicBool = AtomicBool::new(true);
+
+#[cfg(target_os = "windows")]
+fn background_command(program: &str) -> Command {
+    let mut command = Command::new(program);
+    use std::os::windows::process::CommandExt;
+
+    // Prevent console subsystem programs such as PowerShell and cmd from
+    // flashing a terminal window when invoked by the GUI application.
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+
+    command
+}
+
+#[cfg(not(target_os = "windows"))]
+fn background_command(program: &str) -> Command {
+    Command::new(program)
+}
 
 fn legacy_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
@@ -67,14 +86,14 @@ fn write_config(app: tauri::AppHandle, content: String) -> Result<(), String> {
 fn open_system_path(path: PathBuf) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdg-open")
+        background_command("xdg-open")
             .arg(path)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
+        background_command("open")
             .arg(path)
             .spawn()
             .map_err(|e| e.to_string())?;
@@ -82,7 +101,7 @@ fn open_system_path(path: PathBuf) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let path_arg = path.to_string_lossy().to_string();
-        std::process::Command::new("cmd")
+        background_command("cmd")
             .args(["/C", "start", "", path_arg.as_str()])
             .spawn()
             .map_err(|e| e.to_string())?;
@@ -207,7 +226,7 @@ for (const window of allWindows()) {{
     }
 
     for program in ["qdbus6", "qdbus"] {
-        let Ok(output) = std::process::Command::new(program)
+        let Ok(output) = background_command(program)
             .arg("org.kde.KWin")
             .arg("/Scripting")
             .arg("org.kde.kwin.Scripting.loadScript")
@@ -228,7 +247,7 @@ for (const window of allWindows()) {{
             format!("/{}", script_id),
         ];
         for script_object in candidate_paths {
-            let _ = std::process::Command::new(program)
+            let _ = background_command(program)
                 .arg("org.kde.KWin")
                 .arg(script_object)
                 .arg("org.kde.kwin.Script.run")
@@ -506,14 +525,14 @@ async fn baidu_ocr(
 fn simulate_copy() -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdotool")
+        background_command("xdotool")
             .args(&["key", "ctrl+c"])
             .output()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("osascript")
+        background_command("osascript")
             .args(&[
                 "-e",
                 "tell application \"System Events\" to keystroke \"c\" using {command down}",
@@ -523,7 +542,7 @@ fn simulate_copy() -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("powershell")
+        background_command("powershell")
             .args(&["-Command", "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"])
             .output()
             .map_err(|e| e.to_string())?;
@@ -535,14 +554,14 @@ fn simulate_copy() -> Result<(), String> {
 fn simulate_paste() -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdotool")
+        background_command("xdotool")
             .args(&["key", "ctrl+v"])
             .output()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("osascript")
+        background_command("osascript")
             .args(&[
                 "-e",
                 "tell application \"System Events\" to keystroke \"v\" using {command down}",
@@ -552,7 +571,7 @@ fn simulate_paste() -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("powershell")
+        background_command("powershell")
             .args(&["-Command", "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"])
             .output()
             .map_err(|e| e.to_string())?;
@@ -566,21 +585,21 @@ fn open_url(raw_url: String) -> Result<(), String> {
 
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdg-open")
+        background_command("xdg-open")
             .arg(url)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
+        background_command("open")
             .arg(url)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("rundll32")
+        background_command("rundll32")
             .args(["url.dll,FileProtocolHandler", url])
             .spawn()
             .map_err(|e| e.to_string())?;
@@ -684,10 +703,7 @@ fn read_clipboard_text_fallback() -> Option<String> {
 }
 
 fn command_text_output(program: &str, args: &[&str]) -> Option<String> {
-    let output = std::process::Command::new(program)
-        .args(args)
-        .output()
-        .ok()?;
+    let output = background_command(program).args(args).output().ok()?;
     if !output.status.success() || output.stdout.is_empty() {
         return None;
     }
@@ -701,7 +717,7 @@ fn command_text_output(program: &str, args: &[&str]) -> Option<String> {
 }
 
 fn command_output(program: &str, args: &[&str]) -> Result<Option<String>, String> {
-    let output = match std::process::Command::new(program).args(args).output() {
+    let output = match background_command(program).args(args).output() {
         Ok(output) => output,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.to_string()),

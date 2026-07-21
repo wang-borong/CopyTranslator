@@ -56,34 +56,24 @@ function getThemes() {
 }
 
 export function applyThemeFromConfig() {
-  const theme = vuetifyInstance?.theme as any;
+  const theme = vuetifyInstance?.theme;
   if (!theme) {
     return;
   }
   const themes = getThemes();
   const currentThemes = theme.themes.value;
-  const currentLight = currentThemes.light || themes.light;
-  const currentDark = currentThemes.dark || themes.dark;
-  theme.themes.value = {
-    ...currentThemes,
-    light: {
-      ...currentLight,
-      dark: false,
-      colors: {
-        ...currentLight.colors,
-        primary: themes.light.colors.primary,
-      },
-    },
-    dark: {
-      ...currentDark,
-      dark: true,
-      colors: {
-        ...currentDark.colors,
-        primary: themes.dark.colors.primary,
-      },
-    },
-  };
-  theme.change(getVuetifyThemeName());
+  if (currentThemes.light) {
+    currentThemes.light.colors.primary = themes.light.colors.primary;
+  }
+  if (currentThemes.dark) {
+    currentThemes.dark.colors.primary = themes.dark.colors.primary;
+  }
+
+  // Do not recreate the theme registry while Vuetify is rendering. WebView2
+  // is especially sensitive to the resulting rapid color-scheme/style swap.
+  void theme.change(getVuetifyThemeName()).catch((error) => {
+    console.error("Failed to change theme:", error);
+  });
 }
 
 export default () => {
