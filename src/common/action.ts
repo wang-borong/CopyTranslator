@@ -428,7 +428,6 @@ class ActionManager {
     this.append(switchAction("multiSource"));
 
     this.append(switchAction("openAtLogin", "advance"));
-    this.append(switchAction("closeAsQuit", "advance"));
     this.append(switchAction("doubleClickCopy", "advance"));
     this.append(switchAction("enableDoubleCopyTranslate", "advance"));
     this.append(switchAction("smartDict", "advance"));

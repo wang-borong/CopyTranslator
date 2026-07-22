@@ -281,7 +281,9 @@ function initConfig(
 
   config.setRule("isNewUser", new TypeRule<boolean>(true));
   config.setRule("toastTip", new TypeRule<boolean>(false));
-  config.setRule("closeAsQuit", new TypeRule<boolean>(true));
+  // Kept for backwards-compatible config loading. Closing a window now always
+  // hides it to the system tray; quitting is an explicit action.
+  config.setRule("closeAsQuit", new TypeRule<boolean>(false));
   config.setRule("autoCheckUpdate", new TypeRule<boolean>(true));
   config.setRule("openAtLogin", new TypeRule<boolean>(false));
   config.setRule("enableDoubleCopyTranslate", new TypeRule<boolean>(false));

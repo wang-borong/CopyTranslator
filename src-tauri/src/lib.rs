@@ -10,14 +10,77 @@ use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 const MIN_LINUX_WINDOW_OPACITY: f64 = 0.25;
 const CLIPBOARD_POLL_INTERVAL_MS: u64 = 250;
 
 static LISTEN_CLIPBOARD: AtomicBool = AtomicBool::new(true);
+
+const MAIN_WINDOW_LABEL: &str = "main";
+
+fn show_main_window(app: &AppHandle) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return;
+    };
+
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+fn is_primary_click(event: &TrayIconEvent) -> bool {
+    matches!(
+        event,
+        TrayIconEvent::Click {
+            button: MouseButton::Left,
+            button_state: MouseButtonState::Up,
+            ..
+        }
+    )
+}
+
+#[cfg(test)]
+mod tray_tests {
+    use super::*;
+    use tauri::{PhysicalPosition, PhysicalSize, Position, Rect, Size};
+
+    fn click(button: MouseButton, button_state: MouseButtonState) -> TrayIconEvent {
+        TrayIconEvent::Click {
+            id: "copytranslator-test-tray".into(),
+            position: PhysicalPosition::new(0.0, 0.0),
+            rect: Rect {
+                position: Position::Physical(PhysicalPosition::new(0, 0)),
+                size: Size::Physical(PhysicalSize::new(16, 16)),
+            },
+            button,
+            button_state,
+        }
+    }
+
+    #[test]
+    fn toggles_only_after_a_left_click_is_released() {
+        assert!(is_primary_click(&click(
+            MouseButton::Left,
+            MouseButtonState::Up
+        )));
+        assert!(!is_primary_click(&click(
+            MouseButton::Right,
+            MouseButtonState::Up
+        )));
+        assert!(!is_primary_click(&click(
+            MouseButton::Left,
+            MouseButtonState::Down
+        )));
+    }
+}
+
+#[tauri::command]
+fn exit_app(app: AppHandle) {
+    app.exit(0);
+}
 
 #[cfg(target_os = "windows")]
 fn background_command(program: &str) -> Command {
@@ -837,34 +900,31 @@ pub fn run() {
             apply_main_window_icon(app);
 
             // Tray setup
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let show_i = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit CopyTranslator", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Show CopyTranslator", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("CopyTranslator")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
                         app.exit(0);
                     }
                     "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(app);
                     }
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
+                    if is_primary_click(&event) {
                         let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
+                        if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
                             if window.is_visible().unwrap_or(false) {
                                 let _ = window.hide();
                             } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
+                                show_main_window(app);
                             }
                         }
                     }
@@ -873,7 +933,16 @@ pub fn run() {
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if window.label() == MAIN_WINDOW_LABEL {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            exit_app,
             set_listen_clipboard,
             set_window_opacity,
             set_window_always_on_top,

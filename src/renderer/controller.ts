@@ -484,8 +484,10 @@ export class RendererController extends CommonController {
       case "delete":
         return false;
       case "quit":
+        invoke("exit_app");
+        return true;
       case "close":
-        getCurrentWindow().close();
+        getCurrentWindow().hide();
         return true;
       case "minimize":
         getCurrentWindow().minimize();
@@ -790,13 +792,11 @@ export class RendererController extends CommonController {
         }, 100);
         break;
       case "exit":
-        getCurrentWindow().close();
+        invoke("exit_app");
         break;
       case "closeWindow":
         if (router.currentRoute.value.name === "settings") {
           router.push({ name: "contrast" });
-        } else if (config.get("closeAsQuit")) {
-          getCurrentWindow().close();
         } else {
           getCurrentWindow().hide();
         }
